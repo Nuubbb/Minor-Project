@@ -1,11 +1,15 @@
 import cv2
 webcam=cv2.VideoCapture(0)
+from ultralytics import YOLO
+model=YOLO("yolov8n.pt")
 
 while True:
     ret,img=webcam.read()
     if not ret:
         break
     img=cv2.flip(img,1)
+    results=model(img, verbose=False)
+    img=results[0].plot()
     cv2.imshow("Surveillance System",img)
     key=cv2.waitKey(1)
     if key==27:
