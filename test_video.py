@@ -1,8 +1,9 @@
 import cv2
-webcam=cv2.VideoCapture(0)
 from ultralytics import YOLO
-model=YOLO("yolov8n.pt")
-
+webcam=cv2.VideoCapture(0)
+<<<<<<< HEAD
+model = YOLO("yolov8n.pt")
+>>>>>>> 9ae77fabb9210f4ea6cc51d53b4f7c8d645a4c34
 while True:
     ret,img=webcam.read()
     if not ret:
