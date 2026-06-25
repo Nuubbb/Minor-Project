@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <title>Login - AI Surveillance</title>
+</head>
+<body style="display: flex; justify-content: center; align-items: center; height: 100vh;">
+    <div class="login-box">
+        <h2 style="text-align: center; margin-top: 0; color: #1e293b;">System Login</h2>
+        
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="flash {{ category }}">{{ message }}</div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
+        <form method="POST" action="{{ url_for('login') }}">
+            <label style="font-weight: 500; color: #475569;">Username</label>
+            <input type="text" name="username" placeholder="Enter username" required>
+            
+            <label style="font-weight: 500; color: #475569;">Password</label>
+            <input type="password" name="password" placeholder="Enter password" required>
+            
+            <button type="submit" style="width: 100%; margin-top: 10px;">Access Dashboard</button>
+        </form>
+        
+        <p style="text-align: center; margin-top: 25px; color: #64748b; font-size: 0.9rem;">
+            Don't have an account? <a href="{{ url_for('signup') }}" class="text-link">Sign up here</a>
+        </p>
+    </div>
+</body>
+</html>
