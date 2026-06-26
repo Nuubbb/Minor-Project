@@ -7,7 +7,6 @@
 <body style="display: flex; justify-content: center; align-items: center; height: 100vh;">
     <div class="login-box">
         <h2 style="text-align: center; margin-top: 0; color: #1e293b;">Register Operator</h2>
-        
         {% with messages = get_flashed_messages(with_categories=true) %}
             {% if messages %}
                 {% for category, message in messages %}
@@ -15,17 +14,13 @@
                 {% endfor %}
             {% endif %}
         {% endwith %}
-
         <form method="POST" action="{{ url_for('signup') }}">
             <label style="font-weight: 500; color: #475569;">Choose Username</label>
-            <input type="text" name="username" placeholder="e.g., JohnDoe" required>
-            
+            <input type="text" name="username" required>
             <label style="font-weight: 500; color: #475569;">Create Password</label>
-            <input type="password" name="password" placeholder="Minimum 6 characters" required>
-            
+            <input type="password" name="password" required>
             <button type="submit" class="btn-success" style="width: 100%; margin-top: 10px;">Create Account</button>
         </form>
-        
         <p style="text-align: center; margin-top: 25px; color: #64748b; font-size: 0.9rem;">
             Already have an account? <a href="{{ url_for('login') }}" class="text-link">Log in</a>
         </p>
