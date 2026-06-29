@@ -6,105 +6,35 @@
 </head>
 <body>
     <nav>
-        <div>
-            <strong style="font-size: 1.2rem;">Surveillance Desk</strong>
-            <span style="margin-left: 15px; color:#94a3b8;">User: <strong>{{ username }}</strong></span>
-            <span class="user-badge">{{ role }}</span>
-        </div>
+        <div><strong>SURVEILLANCE DESK</strong> | User: {{ username }}</div>
         <div>
             <a href="{{ url_for('dashboard') }}">Dashboard</a>
-            {% if role == 'Admin' %}
-                <a href="{{ url_for('users') }}">View Users</a>
-            {% endif %}
+            {% if role|lower == 'admin' %}<a href="{{ url_for('users') }}">Manage Users</a>{% endif %}
             <a href="{{ url_for('logout') }}" style="color: #f87171;">Logout</a>
         </div>
     </nav>
     <div class="container">
-        {% with messages = get_flashed_messages(with_categories=true) %}
-            {% if messages %}
-                {% for category, message in messages %}
-                    <div class="flash {{ category }}">{{ message }}</div>
-                {% endfor %}
-            {% endif %}
-        {% endwith %}
-
-        <h2>Live System Operations</h2>
         <div class="grid">
             <div class="card">
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
-                    <h3 style="margin: 0;">Live Visual Feed</h3>
-                    <div>
-                        {% if not run_live %}
-                            <a href="{{ url_for('dashboard', live='true') }}" class="btn btn-success">▶ Go Live</a>
-                        {% else %}
-                            <a href="{{ url_for('dashboard', live='false') }}" class="btn btn-danger">■ Stop Feed</a>
-                        {% endif %}
-                    </div>
-                </div>
+                <h3>Visual Feed</h3>
+                <a href="{{ url_for('dashboard', live='true') }}" class="btn">Go Live</a>
                 <div class="video-container">
-                    {% if run_live %}
-                        <img src="{{ url_for('video_feed') }}" alt="Live Feed">
-                    {% else %}
-                        <div style="text-align: center; color: #64748b;">
-                            <p style="font-size: 1.2rem; margin-bottom: 5px;">Camera is currently Offline.</p>
-                            <p style="font-size: 0.9rem; color:#64748b;">Click <strong>"Go Live"</strong> above to launch your models.</p>
-                        </div>
-                    {% endif %}
+                    {% if run_live %}<img src="{{ url_for('video_feed') }}">{% else %}<p>Feed Paused</p>{% endif %}
                 </div>
             </div>
-            
             <div class="card">
-                <h3>System Logs & Alerts</h3>
-                <div style="max-height: 450px; overflow-y: auto;">
-                    <table>
-                        <thead>
-                            <tr>
-                                <th>Timestamp</th>
-                                <th>Threat</th>
-                                <th>Confidence</th>
-                                <th>Status</th>
-                                <th>Action</th>
-                            </tr>
-                        </thead>
-                        <tbody id="alerts-tbody">
-                            {% for alert in alerts %}
-                            <tr class="{% if alert.is_false_alarm %}false-alarm-row{% else %}alert-row{% endif %}">
-                                <td style="font-size: 0.85rem; color: #64748b;">{{ alert.timestamp }}</td>
-                                <td style="font-weight: bold; text-transform: capitalize;">{{ alert.alert_type }}</td>
-                                <td>{{ "%.1f"|format(alert.confidence * 100) }}%</td>
-                                <td>
-                                    {% if alert.is_false_alarm %}
-                                        <span style="color: #64748b; font-weight: bold;">False Alarm</span>
-                                    {% else %}
-                                        <span style="color: #dc2626; font-weight: bold;">Confirmed</span>
-                                    {% endif %}
-                                </td>
-                                <td>
-                                    {% if not alert.is_false_alarm %}
-                                    <form action="{{ url_for('flag_false_alarm', alert_id=alert.id) }}" method="POST" style="margin: 0;">
-                                        <button type="submit" class="btn" style="background:#64748b; padding: 6px 10px; font-size: 0.8rem;">Mark False</button>
-                                    </form>
-                                    {% endif %}
-                                </td>
-                            </tr>
-                            {% else %}
-                            <tr><td colspan="5" style="color: #64748b; text-align: center;">No security events triggered.</td></tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
-                </div>
+                <h3>Alerts</h3>
+                <table id="alerts-tbody">
+                    {% for a in alerts %}
+                    <tr class="{{'false-alarm-row' if a[4] else 'alert-row'}}">
+                        <td>{{a[1].split()[1]}}</td><td>{{a[2]}}</td><td>{{(a[3]*100)|int}}%</td>
+                        <td>{% if not a[4] %}<form action="/mark_false_alarm/{{a[0]}}" method="POST"><button type="submit">Mark False</button></form>{% endif %}</td>
+                    </tr>
+                    {% endfor %}
+                </table>
             </div>
         </div>
     </div>
-    
-    <script>
-        function updateAlerts() {
-            fetch("{{ url_for('get_alerts') }}")
-                .then(response => response.text())
-                .then(html => { document.getElementById('alerts-tbody').innerHTML = html; })
-                .catch(err => console.log('Notice: Could not fetch recent alerts.'));
-        }
-        setInterval(updateAlerts, 3000);
-    </script>
+    <script>setInterval(()=>{fetch("/get_alerts").then(r=>r.text()).then(h=>document.getElementById('alerts-tbody').innerHTML=h)}, 3000);</script>
 </body>
 </html>

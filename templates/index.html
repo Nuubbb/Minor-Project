@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <title>AI Surveillance System</title>
+</head>
+<body style="display: flex; justify-content: center; align-items: center; min-height: 100vh;">
+    
+    <div class="login-box" style="max-width: 550px; padding: 50px;">
+        <h2 style="text-align: center; margin-top: 0; color: #1e293b; font-size: 1.8rem;">Select Login Portal</h2>
+        <p style="text-align: center; color: #64748b; margin-bottom: 30px;">Choose your designated workspace to access the surveillance network.</p>
+        
+        <div style="display: flex; gap: 20px;">
+            <a href="{{ url_for('login', role_type='operator') }}" class="btn" style="flex: 1; padding: 25px 10px; background: #3b82f6; display: flex; justify-content: center; align-items: center; text-decoration: none;">
+                <span style="font-size: 1.1rem; font-weight: bold;">Operator Desk</span>
+            </a>
+            
+            <a href="{{ url_for('login', role_type='admin') }}" class="btn" style="flex: 1; padding: 25px 10px; background: #0f172a; display: flex; justify-content: center; align-items: center; text-decoration: none;">
+                <span style="font-size: 1.1rem; font-weight: bold;">System Admin</span>
+            </a>
+        </div>
+    </div>
+
+</body>
+</html>

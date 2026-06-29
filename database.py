@@ -49,3 +49,10 @@ def mark_false_alarm(alert_id):
     with sqlite3.connect(DATABASE) as conn:
         conn.execute("UPDATE alerts SET is_false_alarm = 1 WHERE id = ?", (alert_id,))
         conn.commit()
+
+def count_after_hours():
+    with sqlite3.connect(DATABASE) as conn:
+        count = conn.execute(
+            "SELECT COUNT(*) FROM alerts WHERE alert_type = 'after-hours'"
+        ).fetchone()[0]
+    return count

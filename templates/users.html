@@ -1,41 +1,13 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
-    <title>Manage Users</title>
-</head>
+<head><link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}"><title>Manage Users</title></head>
 <body>
-    <nav>
-        <div>
-            <strong style="font-size: 1.2rem;">Surveillance Desk</strong>
-            <span style="margin-left: 15px; color:#94a3b8;">User: <strong>{{ username }}</strong></span>
-        </div>
-        <div>
-            <a href="{{ url_for('dashboard') }}">Dashboard</a>
-            <a href="{{ url_for('users') }}">View Users</a>
-            <a href="{{ url_for('logout') }}" style="color: #f87171;">Logout</a>
-        </div>
-    </nav>
+    <nav><div><strong>SURVEILLANCE DESK</strong></div><div><a href="{{ url_for('dashboard') }}">Dashboard</a><a href="{{ url_for('logout') }}">Logout</a></div></nav>
     <div class="container">
-        <h2>System Operators</h2>
         <div class="card">
             <table>
-                <thead>
-                    <tr>
-                        <th>ID</th>
-                        <th>Username</th>
-                        <th>Access Role</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for user in users %}
-                    <tr>
-                        <td>{{ user.id }}</td>
-                        <td><strong>{{ user.username }}</strong></td>
-                        <td><span class="user-badge">{{ user.role }}</span></td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
+                <thead><tr><th>ID</th><th>User</th><th>Role</th></tr></thead>
+                <tbody>{% for u in users %}<tr><td>{{u[0]}}</td><td>{{u[1]}}</td><td>{{u[3]}}</td></tr>{% endfor %}</tbody>
             </table>
         </div>
     </div>
