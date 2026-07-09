@@ -1,13 +1,15 @@
 import sqlite3
 import cv2
 import winsound
+import threading
 import time
 from datetime import datetime
 from flask import Flask, render_template, request, redirect, url_for, session, Response, flash, render_template_string
 from werkzeug.security import generate_password_hash, check_password_hash
 from ultralytics import YOLO
 
-from database import init_db, log_alert, mark_false_alarm, count_after_hours, DATABASE
+from database import (init_db, log_alert, mark_false_alarm, count_after_hours, DATABASE,
+                      init_events, add_event, get_all_events, get_active_event)
 from violence_detector import ViolenceDetector          # YOUR temporal violence model
 from context_engine import ThreatAssessor, IGNORE, LOG, NOTIFY, ALARM   # YOUR context engine
 try:
@@ -18,13 +20,14 @@ except Exception:
 app = Flask(__name__)
 app.secret_key = 'super_secure_surveillance_key_2026'
 init_db()
+init_events()
 
 # ----------------- INPUT SOURCE -----------------
 USE_WEBCAM = True
 VIDEO_PATH = "fight.mp4"
 
 # ----------------- DETECTION SETUP (loaded once) -----------------
-general_model = YOLO("yolov8s.pt")                                    # person detection + tracking
+general_model = YOLO("yolov8n.pt")                                    # person detection (nano = faster)
 weapon_model = YOLO("best.pt")                                        # gun/knife detection
 violence_detector = ViolenceDetector("violence_mobilenet_lstm.pt")   # temporal violence model
 assessor = ThreatAssessor()                                          # context-aware decision engine
@@ -32,6 +35,7 @@ assessor = ThreatAssessor()                                          # context-a
 WEAPON_KEYWORDS = ("gun", "knife", "knive", "pistol", "rifle", "handgun", "shotgun", "weapon", "blade")
 ACTION_COOLDOWN = 5.0
 last_action = {}
+_last_email = {"t": 0.0}   # throttle emails: at most one per minute
 DISMISS_SECRET = "kec_surveillance_2026"   # MUST match email_alert.py
 TIER_COLOR = {LOG: (0, 255, 255), NOTIFY: (0, 165, 255), ALARM: (0, 0, 255)}
 
@@ -45,67 +49,127 @@ def _should_act(alert_type):
     return False
 
 
-def _detect_signals(img):
-    """Run detectors, draw boxes, return RAW signals for the engine."""
-    person_results = general_model.track(img, classes=[0], conf=0.5, persist=True, verbose=False)[0]
-    img = person_results.plot()
-    person_count = len(person_results.boxes)
-    track_ids = (person_results.boxes.id.int().tolist()
-                 if person_results.boxes.id is not None else [])
+def _detect_persons(frame):
+    """Fast person detection + tracking (nano model). Runs often."""
+    boxes, count, ids = [], 0, []
+    try:
+        pr = general_model.track(frame, classes=[0], conf=0.5, persist=True, verbose=False, imgsz=320)[0]
+        count = len(pr.boxes)
+        ids = pr.boxes.id.int().tolist() if pr.boxes.id is not None else []
+        id_list = ids if ids else [None] * count
+        for i, xyxy in enumerate(pr.boxes.xyxy.cpu().numpy().astype(int)):
+            x1, y1, x2, y2 = xyxy
+            pid = id_list[i] if i < len(id_list) else None
+            label = f"id:{pid} person" if pid is not None else "person"
+            boxes.append((x1, y1, x2, y2, label, (0, 255, 0)))
+    except Exception as e:
+        print("[person det] skip:", e)
+    return boxes, count, ids
 
-    weapon_results = weapon_model(img, conf=0.5, verbose=False)[0]
-    img = weapon_results.plot()
-    weapons = []
-    for box in weapon_results.boxes:
-        name = weapon_model.names[int(box.cls[0])].lower()
-        if any(k in name for k in WEAPON_KEYWORDS):
-            weapons.append((name, float(box.conf[0])))
-    return img, person_count, track_ids, weapons
+
+def _detect_weapons(frame):
+    """Weapon detection (heavier model). Runs RARELY -- weapons are rare + mostly static."""
+    boxes, weapons = [], []
+    try:
+        wr = weapon_model(frame, conf=0.5, verbose=False, imgsz=320)[0]
+        for xyxy, cls, conf in zip(wr.boxes.xyxy.cpu().numpy().astype(int),
+                                   wr.boxes.cls.cpu().numpy().astype(int),
+                                   wr.boxes.conf.cpu().numpy()):
+            name = weapon_model.names[int(cls)]
+            if any(k in name.lower() for k in WEAPON_KEYWORDS):   # only real weapons
+                x1, y1, x2, y2 = xyxy
+                boxes.append((x1, y1, x2, y2, f"{name} {conf:.2f}", (0, 0, 255)))
+                weapons.append((name.lower(), float(conf)))
+    except Exception as e:
+        print("[weapon det] skip:", e)
+    return boxes, weapons
 
 
-def generate_frames(operator_email=None):
-    """Live feed WITH violence detection + context-aware threat assessment."""
-    camera = cv2.VideoCapture(0) if USE_WEBCAM else cv2.VideoCapture(VIDEO_PATH)
-    while True:
-        success, frame = camera.read()
-        if not success:
-            break
+def _draw_boxes(img, boxes):
+    """Draw cached boxes onto a frame (used on skipped frames)."""
+    for (x1, y1, x2, y2, label, color) in boxes:
+        cv2.rectangle(img, (x1, y1), (x2, y2), color, 2)
+        cv2.putText(img, label, (x1, max(15, y1 - 6)),
+                    cv2.FONT_HERSHEY_SIMPLEX, 0.5, color, 1)
+    return img
 
-        # 1) violence score from the temporal model (clean frame)
-        is_violent, violence_prob = violence_detector.update(frame)
 
-        # 2) detectors -> raw signals (also draws the boxes)
-        img, person_count, track_ids, weapons = _detect_signals(frame)
+_event_cache = {"checked": 0.0, "active": None}
+def current_event():
+    """Return (name, expected_crowd) if an event is active now, else None. Cached 30s."""
+    t = time.time()
+    if t - _event_cache["checked"] > 30:
+        _event_cache["active"] = get_active_event()
+        _event_cache["checked"] = t
+    return _event_cache["active"]
 
-        # 3) THE BRAIN: context engine combines all signals -> a response tier
-        tier, alert_type, message, conf = assessor.assess(
-            violence_prob=violence_prob, weapons=weapons,
-            person_count=person_count, track_ids=track_ids,
-            current_hour=datetime.now().hour)
 
-        # 4) act on the tier
-        if tier != IGNORE:
-            cv2.putText(img, message, (20, 50), cv2.FONT_HERSHEY_SIMPLEX,
-                        0.8, TIER_COLOR.get(tier, (0, 0, 255)), 2)
-            if _should_act(alert_type):
-                new_id = log_alert(alert_type, conf)          # record to DB, get its id
-                if tier == ALARM:
-                    try:
-                        winsound.Beep(1000, 200)              # siren on real threats
-                    except Exception:
-                        pass
-                    if operator_email and send_email_alert:   # email the logged-in operator
-                        send_email_alert(operator_email, message, new_id)
+def generate_frames(operator_email=None, source=None):
+    """Live feed: reads, detects, and yields frames. Stops AUTOMATICALLY when the
+    browser disconnects (no background thread -> no alarms after logout)."""
+    camera = cv2.VideoCapture(source) if source else cv2.VideoCapture(0)
+    violence_detector.buffer.clear(); violence_detector.prob_hist.clear(); violence_detector._count = 0
+    fail_count = 0
+    DETECT_EVERY = 4                      # person detection frequency (fast model)
+    WEAPON_EVERY = 15                     # weapon detection frequency (heavy model -> run rarely)
+    frame_no = 0
+    person_boxes, weapon_boxes = [], []
+    person_count, track_ids, weapons = 0, [], []
+    try:
+        while True:
+            success, frame = camera.read()
+            if not success:
+                if source:                              # VIDEO FILE -> loop back to the start
+                    camera.set(cv2.CAP_PROP_POS_FRAMES, 0)
+                    fail_count += 1
+                    if fail_count > 5:
+                        break
+                    continue
+                break
+            fail_count = 0
+            frame = cv2.resize(frame, (640, 480))
 
-        # live violence score readout (green = calm, red = violent)
-        cv2.putText(img, f"Violence: {violence_prob:.2f}", (20, 90),
-                    cv2.FONT_HERSHEY_SIMPLEX, 0.7,
-                    (0, 0, 255) if is_violent else (0, 255, 0), 2)
+            is_violent, violence_prob = violence_detector.update(frame)
 
-        ret, buffer = cv2.imencode('.jpg', img)
-        frame_bytes = buffer.tobytes()
-        yield (b'--frame\r\n' b'Content-Type: image/jpeg\r\n\r\n' + frame_bytes + b'\r\n')
-    camera.release()
+            frame_no += 1
+            if frame_no % DETECT_EVERY == 0:
+                person_boxes, person_count, track_ids = _detect_persons(frame)
+            if frame_no % WEAPON_EVERY == 0:
+                weapon_boxes, weapons = _detect_weapons(frame)
+            img = _draw_boxes(frame.copy(), person_boxes + weapon_boxes)
+
+            ev = current_event()
+            tier, alert_type, message, conf = assessor.assess(
+                violence_prob=violence_prob, weapons=weapons,
+                person_count=person_count, track_ids=track_ids,
+                current_hour=datetime.now().hour,
+                event_active=ev is not None,
+                event_expected_crowd=(ev[1] if ev else 0))
+
+            if tier != IGNORE:
+                cv2.putText(img, message, (20, 50), cv2.FONT_HERSHEY_SIMPLEX,
+                            0.8, TIER_COLOR.get(tier, (0, 0, 255)), 2)
+                if _should_act(alert_type):
+                    new_id = log_alert(alert_type, conf)
+                    if tier == ALARM:
+                        try:
+                            winsound.Beep(1000, 200)
+                        except Exception:
+                            pass
+                        if operator_email and send_email_alert and (time.time() - _last_email["t"] > 60):
+                            _last_email["t"] = time.time()      # max ONE email per minute
+                            threading.Thread(target=send_email_alert,
+                                             args=(operator_email, message, new_id),
+                                             daemon=True).start()   # non-blocking
+
+            cv2.putText(img, f"Violence: {violence_prob:.2f}", (20, 90),
+                        cv2.FONT_HERSHEY_SIMPLEX, 0.7,
+                        (0, 0, 255) if is_violent else (0, 255, 0), 2)
+
+            ret, buffer = cv2.imencode('.jpg', img, [cv2.IMWRITE_JPEG_QUALITY, 70])
+            yield (b'--frame\r\n' b'Content-Type: image/jpeg\r\n\r\n' + buffer.tobytes() + b'\r\n')
+    finally:
+        camera.release()          # always release when the browser disconnects
 
 
 # ================= SUDARSHAN'S ROUTES (unchanged) =================
@@ -184,7 +248,9 @@ def video_feed():
         row = conn.execute("SELECT email FROM users WHERE username=?", (session['username'],)).fetchone()
         if row:
             operator_email = row['email']
-    return Response(generate_frames(operator_email), mimetype='multipart/x-mixed-replace; boundary=frame')
+    video = request.args.get('video') or None
+    return Response(generate_frames(operator_email, source=video),
+                    mimetype='multipart/x-mixed-replace; boundary=frame')
 
 
 @app.route('/get_alerts')
@@ -268,6 +334,29 @@ def dismiss_alert(alert_id, token):
     return render_template_string(confirm.replace("{{ aid }}", str(alert_id)))
 
 
+
+@app.route('/events')
+def events():
+    if 'username' not in session:
+        return redirect(url_for('index'))
+    if session.get('role', '').lower() != 'admin':
+        flash("Access Denied: Administrator privileges required.", "error")
+        return redirect(url_for('dashboard'))
+    return render_template('events.html', username=session['username'],
+                           role=session['role'], events=get_all_events())
+
+
+@app.route('/events/add', methods=['POST'])
+def add_event_route():
+    if 'username' not in session or session.get('role', '').lower() != 'admin':
+        return redirect(url_for('index'))
+    add_event(request.form['event_date'], request.form['name'],
+              request.form['start_hour'], request.form['end_hour'],
+              request.form['expected_crowd'])
+    flash("Event scheduled.", "success")
+    return redirect(url_for('events'))
+
+
 @app.route('/logout')
 def logout():
     session.clear()
@@ -275,4 +364,4 @@ def logout():
 
 
 if __name__ == '__main__':
-    app.run(debug=True, port=5000, threaded=True, host='0.0.0.0')
+    app.run(debug=True, port=5000, threaded=True)

@@ -26,6 +26,7 @@ DESIGN PRINCIPLES (these are the defense talking points):
                       -> blurry "maybe a gun" doesn't trigger anything.
 """
 import time
+from collections import deque
 
 # response tiers as ordered numbers (higher = more severe)
 IGNORE, LOG, NOTIFY, ALARM = 0, 1, 2, 3
@@ -35,7 +36,9 @@ TIER_NAME = {IGNORE: "IGNORE", LOG: "LOG", NOTIFY: "NOTIFY", ALARM: "ALARM"}
 class ThreatAssessor:
     def __init__(self,
                  violence_threshold=0.75,   # confidence for a frame to count as violent
-                 violence_streak=4,         # consecutive violent frames before it's "real"
+                 violence_streak=25,        # violent frames in a row before it's 'real' (filters brief hugs)
+                 fight_max_people=5,        # <= this many people = normal fight threshold
+                 crowd_violence_threshold=0.90,  # crowds need HIGHER confidence to alarm (they over-score)
                  weapon_conf=0.60,          # ignore weapon detections below this confidence
                  closing_hour=17,           # after-hours starts (5 PM)
                  dwell_seconds=15,          # loitering threshold
@@ -43,19 +46,23 @@ class ThreatAssessor:
                  notify_cooldown=20):       # seconds between repeated NOTIFYs of same type
         self.violence_threshold = violence_threshold
         self.violence_streak_needed = violence_streak
+        self.fight_max_people = fight_max_people
+        self.crowd_violence_threshold = crowd_violence_threshold
         self.weapon_conf = weapon_conf
         self.closing_hour = closing_hour
         self.dwell_seconds = dwell_seconds
         self.log_cooldown = log_cooldown
         self.notify_cooldown = notify_cooldown
 
-        self._violent_streak = 0     # how many frames in a row have been violent
+        self._violent_streak = 0     # consecutive violent frames
+        self._people_hist = deque(maxlen=40)   # recent person counts (smooths flicker)
         self._track_start = {}       # person_id -> first-seen time (loitering)
         self._last_fire = {}         # alert_type -> last time we acted on it
 
     # ---------- helper rules ----------
     def _sustained_violence(self, prob):
-        """PRINCIPLE 1: True only if violence PERSISTED (kills playful 1-frame blips)."""
+        """True only if violence persists for several frames in a row.
+        A hug spikes high briefly -> streak resets -> filtered. A fight sustains -> passes."""
         if prob >= self.violence_threshold:
             self._violent_streak += 1
         else:
@@ -86,7 +93,8 @@ class ThreatAssessor:
 
     # ---------- main decision ----------
     def assess(self, violence_prob=0.0, weapons=None, person_count=0,
-               track_ids=None, current_hour=None, now=None):
+               track_ids=None, current_hour=None, now=None,
+               event_active=False, event_expected_crowd=0):
         """
         Combine all signals into ONE response decision.
         Returns: (tier, alert_type, message, confidence)
@@ -97,6 +105,11 @@ class ThreatAssessor:
         if current_hour is None:
             current_hour = time.localtime(now).tm_hour
         after_hours = current_hour >= self.closing_hour
+        # EVENT CONTEXT: a scheduled event makes activity at its time normal.
+        # Violence/weapons still alarm always -- events only relax crowd/time context.
+        if event_active:
+            after_hours = False                     # event legitimizes the hour
+        crowd_limit = max(3, event_expected_crowd) if event_active else 3
 
         sustained = self._sustained_violence(violence_prob)
         guns_knives = self._strong_weapons(weapons)
@@ -108,8 +121,20 @@ class ThreatAssessor:
         if has_weapon and sustained:
             return ALARM, "weapon+violence", f"ALARM: {guns_knives[0]} with violence!", violence_prob
 
-        # 2) sustained violence alone -> alarm
+        # 2) sustained violence decision. We SMOOTH the person count so brief flicker
+        #    (a person leaving frame) doesn't misclassify a crowd as a small fight.
+        self._people_hist.append(person_count)
+        smoothed_people = max(self._people_hist)      # steady view of how busy the scene is
+        is_crowd = smoothed_people > self.fight_max_people and not event_active
+
         if sustained:
+            if is_crowd:
+                # CROWD: our model is unreliable on dense scenes, so we NEVER auto-alarm here.
+                # We flag it for the operator to review instead (human makes the final call).
+                if self._cooldown_ok("crowd-motion", now, self.notify_cooldown):
+                    return NOTIFY, "crowd-motion", "NOTIFY: High activity in a crowd (review)", 0.5
+                return IGNORE, "", "", 0.0
+            # NORMAL scene (few people) -> a real fight -> alarm
             return ALARM, "violence", "ALARM: Violence detected!", violence_prob
 
         # 3) weapon among several people (PRINCIPLE 2: combined) -> notify
@@ -119,7 +144,7 @@ class ThreatAssessor:
             return IGNORE, "", "", 0.0
 
         # 4) crowd after hours (PRINCIPLE 3: context) -> notify
-        if after_hours and person_count >= 3:
+        if after_hours and person_count >= crowd_limit:
             if self._cooldown_ok("after-hours-crowd", now, self.notify_cooldown):
                 return NOTIFY, "after-hours-crowd", "NOTIFY: Crowd after working hours", 0.6
             return IGNORE, "", "", 0.0

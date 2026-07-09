@@ -10,6 +10,7 @@
         <div>
             <a href="{{ url_for('dashboard') }}">Dashboard</a>
             {% if role|lower == 'admin' %}<a href="{{ url_for('users') }}">Manage Users</a>{% endif %}
+            {% if role|lower == 'admin' %}<a href="{{ url_for('events') }}">Events</a>{% endif %}
             <a href="{{ url_for('logout') }}" style="color: #f87171;">Logout</a>
         </div>
     </nav>
@@ -17,9 +18,14 @@
         <div class="grid">
             <div class="card">
                 <h3>Visual Feed</h3>
-                <a href="{{ url_for('dashboard', live='true') }}" class="btn">Go Live</a>
+                <a href="{{ url_for('dashboard', live='true') }}" class="btn">Go Live (Webcam)</a>
+                <a href="{{ url_for('dashboard', live='true', video='demo.mp4') }}" class="btn" style="background:#dc2626;">Play Test Video</a>
                 <div class="video-container">
-                    {% if run_live %}<img src="{{ url_for('video_feed') }}">{% else %}<p>Feed Paused</p>{% endif %}
+                    {% if run_live %}
+                        <img src="{{ url_for('video_feed', video=request.args.get('video','')) }}">
+                    {% else %}
+                        <p>Feed Paused</p>
+                    {% endif %}
                 </div>
             </div>
             <div class="card">

@@ -56,3 +56,55 @@ def count_after_hours():
             "SELECT COUNT(*) FROM alerts WHERE alert_type = 'after-hours'"
         ).fetchone()[0]
     return count
+
+# ============ ADD THESE TO database.py ============
+
+def init_events():
+    conn = sqlite3.connect(DATABASE)
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS events (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            event_date TEXT,           -- 'YYYY-MM-DD'
+            name TEXT,
+            start_hour INTEGER,        -- 0-23, when the event starts
+            end_hour INTEGER,          -- 0-23, when it ends
+            expected_crowd INTEGER     -- how many people is normal during it
+        )
+    """)
+    conn.commit()
+    conn.close()
+
+
+def add_event(event_date, name, start_hour, end_hour, expected_crowd):
+    conn = sqlite3.connect(DATABASE)
+    conn.execute(
+        "INSERT INTO events (event_date, name, start_hour, end_hour, expected_crowd) VALUES (?, ?, ?, ?, ?)",
+        (event_date, name, int(start_hour), int(end_hour), int(expected_crowd))
+    )
+    conn.commit()
+    conn.close()
+
+
+def get_all_events():
+    conn = sqlite3.connect(DATABASE)
+    conn.row_factory = sqlite3.Row
+    rows = conn.execute("SELECT * FROM events ORDER BY event_date DESC").fetchall()
+    conn.close()
+    return rows
+
+
+def get_active_event():
+    """If RIGHT NOW falls inside a scheduled event, return (name, expected_crowd); else None."""
+    from datetime import datetime
+    now = datetime.now()
+    today = now.strftime("%Y-%m-%d")
+    hour = now.hour
+    conn = sqlite3.connect(DATABASE)
+    conn.row_factory = sqlite3.Row
+    row = conn.execute(
+        "SELECT name, expected_crowd FROM events "
+        "WHERE event_date=? AND start_hour<=? AND end_hour>?",
+        (today, hour, hour)
+    ).fetchone()
+    conn.close()
+    return (row["name"], row["expected_crowd"]) if row else None

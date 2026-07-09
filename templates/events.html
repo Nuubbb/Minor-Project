@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <title>Manage Events</title>
+</head>
+<body>
+    <nav>
+        <div><strong>SURVEILLANCE DESK</strong> | User: {{ username }}</div>
+        <div>
+            <a href="{{ url_for('dashboard') }}">Dashboard</a>
+            {% if role|lower == 'admin' %}<a href="{{ url_for('events') }}">Events</a>{% endif %}
+            <a href="{{ url_for('logout') }}" style="color:#f87171;">Logout</a>
+        </div>
+    </nav>
+    <div class="container">
+        <div class="card">
+            <h3>Schedule an Event</h3>
+            <p style="color:#64748b; font-size:0.9rem;">
+                On event days, the system treats the expected crowd and event hours as normal
+                (fewer false alarms). Violence and weapon detection stay active at all times.
+            </p>
+            <form action="{{ url_for('add_event_route') }}" method="POST">
+                <input type="date" name="event_date" required>
+                <input type="text" name="name" placeholder="Event name (e.g. Dance Program)" required>
+                <label>Start hour (0-23): <input type="number" name="start_hour" min="0" max="23" value="18" required></label>
+                <label>End hour (0-23): <input type="number" name="end_hour" min="0" max="23" value="23" required></label>
+                <label>Expected crowd: <input type="number" name="expected_crowd" min="0" value="20" required></label>
+                <button type="submit" class="btn">Add Event</button>
+            </form>
+        </div>
+
+        <div class="card">
+            <h3>Scheduled Events</h3>
+            <table>
+                <tr><th>Date</th><th>Name</th><th>Hours</th><th>Expected Crowd</th></tr>
+                {% for e in events %}
+                <tr>
+                    <td>{{ e['event_date'] }}</td>
+                    <td>{{ e['name'] }}</td>
+                    <td>{{ e['start_hour'] }}:00 - {{ e['end_hour'] }}:00</td>
+                    <td>{{ e['expected_crowd'] }}</td>
+                </tr>
+                {% else %}
+                <tr><td colspan="4" style="text-align:center; color:#64748b; padding:20px;">No events scheduled.</td></tr>
+                {% endfor %}
+            </table>
+        </div>
+    </div>
+</body>
+</html>
