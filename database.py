@@ -57,7 +57,6 @@ def count_after_hours():
         ).fetchone()[0]
     return count
 
-# ============ ADD THESE TO database.py ============
 
 def init_events():
     conn = sqlite3.connect(DATABASE)
