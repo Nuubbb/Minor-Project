@@ -47,7 +47,7 @@ export default function LoginScreen({ navigation }: Props) {
       <Text style={styles.subtitle}>Sign in to your account</Text>
 
       <View style={styles.roleRow}>
-        {(["Operator", "Admin"] as Role[]).map((r) => (
+        {(["Operator", "Admin", "Resident"] as Role[]).map((r) => (
           <TouchableOpacity
             key={r}
             style={[styles.roleButton, role === r && styles.roleButtonActive]}

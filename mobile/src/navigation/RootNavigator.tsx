@@ -5,10 +5,15 @@ import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { useAuth } from "../context/AuthContext";
 import LoginScreen from "../screens/LoginScreen";
 import SignupScreen from "../screens/SignupScreen";
+import AlertValidatorScreen from "../screens/AlertValidatorScreen";
+import PeerReportValidatorScreen from "../screens/PeerReportValidatorScreen";
+import MemberCameraScreen from "../screens/MemberCameraScreen";
 import MainTabs from "./MainTabs";
-import type { AuthStackParamList } from "./types";
+import { navigationRef } from "./navigationRef";
+import type { AuthStackParamList, RootStackParamList } from "./types";
 
 const AuthStack = createNativeStackNavigator<AuthStackParamList>();
+const RootStack = createNativeStackNavigator<RootStackParamList>();
 
 function AuthNavigator() {
   return (
@@ -16,6 +21,17 @@ function AuthNavigator() {
       <AuthStack.Screen name="Login" component={LoginScreen} />
       <AuthStack.Screen name="Signup" component={SignupScreen} />
     </AuthStack.Navigator>
+  );
+}
+
+function LoggedInNavigator() {
+  return (
+    <RootStack.Navigator screenOptions={{ headerShown: false }}>
+      <RootStack.Screen name="Tabs" component={MainTabs} />
+      <RootStack.Screen name="AlertValidator" component={AlertValidatorScreen} options={{ presentation: "modal" }} />
+      <RootStack.Screen name="PeerReportValidator" component={PeerReportValidatorScreen} options={{ presentation: "modal" }} />
+      <RootStack.Screen name="MemberCamera" component={MemberCameraScreen} options={{ presentation: "modal" }} />
+    </RootStack.Navigator>
   );
 }
 
@@ -31,8 +47,8 @@ export default function RootNavigator() {
   }
 
   return (
-    <NavigationContainer theme={DarkTheme}>
-      {user ? <MainTabs /> : <AuthNavigator />}
+    <NavigationContainer ref={navigationRef} theme={DarkTheme}>
+      {user ? <LoggedInNavigator /> : <AuthNavigator />}
     </NavigationContainer>
   );
 }

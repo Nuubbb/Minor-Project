@@ -17,7 +17,8 @@
             <a href="{{ url_for('dashboard') }}">Dashboard</a>
             <!-- NEW: Link to the historical alerts page -->
             <a href="{{ url_for('alerts_history') }}">Alerts History</a>
-            
+            <a href="{{ url_for('message_packets_view') }}">Message Packets</a>
+
             {% if role|lower == 'admin' %}<a href="{{ url_for('users') }}">Manage Users</a>{% endif %}
             {% if role|lower == 'admin' %}<a href="{{ url_for('events') }}">Events</a>{% endif %}
             <a href="{{ url_for('logout') }}" style="color: #f87171;">Logout</a>

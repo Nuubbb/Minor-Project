@@ -15,7 +15,7 @@ export function setAuthToken(token: string | null) {
 }
 
 interface RequestOptions {
-  method?: "GET" | "POST" | "DELETE";
+  method?: "GET" | "POST" | "PUT" | "DELETE";
   body?: unknown;
   skipAuth?: boolean;
 }
@@ -45,6 +45,8 @@ export const api = {
   get: <T>(path: string) => request<T>(path),
   post: <T>(path: string, body?: unknown, options?: RequestOptions) =>
     request<T>(path, { ...options, method: "POST", body }),
+  put: <T>(path: string, body?: unknown, options?: RequestOptions) =>
+    request<T>(path, { ...options, method: "PUT", body }),
   delete: <T>(path: string) => request<T>(path, { method: "DELETE" }),
 };
 
@@ -52,4 +54,9 @@ export function videoFeedUrl(token: string, video?: string) {
   const params = new URLSearchParams({ token });
   if (video) params.set("video", video);
   return `${API_BASE_URL}/api/video_feed?${params.toString()}`;
+}
+
+export function authenticatedFileUrl(path: string, token: string) {
+  const params = new URLSearchParams({ token });
+  return `${API_BASE_URL}${path}?${params.toString()}`;
 }

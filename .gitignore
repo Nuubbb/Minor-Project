@@ -3,6 +3,11 @@ __pycache__/
 *.pyc
 *.mp4
 airtlab/
+screenshots/
+*.db
+*.pt
+cache/
+extra_normal/
 
 # mobile (Expo/React Native) - node_modules and .expo are also covered by
 # mobile/.gitignore, listed here too as a defensive backstop

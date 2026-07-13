@@ -5,9 +5,14 @@ import { useAuth } from "../context/AuthContext";
 import DashboardScreen from "../screens/DashboardScreen";
 import LiveCameraScreen from "../screens/LiveCameraScreen";
 import AlertHistoryScreen from "../screens/AlertHistoryScreen";
+import CommunityScreen from "../screens/CommunityScreen";
+import CommunityMapScreen from "../screens/CommunityMapScreen";
 import EventsScreen from "../screens/EventsScreen";
 import UsersScreen from "../screens/UsersScreen";
 import ProfileScreen from "../screens/ProfileScreen";
+import { AlertBadgeProvider, useAlertBadge } from "../context/AlertBadgeContext";
+import { useAlertNotifications } from "../notifications/useAlertNotifications";
+import { usePeerReportNotifications } from "../notifications/usePeerReportNotifications";
 import type { MainTabParamList } from "./types";
 
 const Tab = createBottomTabNavigator<MainTabParamList>();
@@ -18,6 +23,8 @@ const TAB_ICONS: Record<keyof MainTabParamList, IoniconName> = {
   Dashboard: "grid-outline",
   Live: "videocam-outline",
   History: "time-outline",
+  Community: "megaphone-outline",
+  Map: "map-outline",
   Events: "calendar-outline",
   Users: "people-outline",
   Profile: "person-outline",
@@ -30,8 +37,19 @@ function tabBarIcon(name: keyof MainTabParamList) {
 }
 
 export default function MainTabs() {
+  return (
+    <AlertBadgeProvider>
+      <MainTabsInner />
+    </AlertBadgeProvider>
+  );
+}
+
+function MainTabsInner() {
   const { user } = useAuth();
+  const { unseenCount } = useAlertBadge();
   const isAdmin = user?.role === "Admin";
+  useAlertNotifications();
+  usePeerReportNotifications();
 
   return (
     <Tab.Navigator
@@ -46,7 +64,11 @@ export default function MainTabs() {
       <Tab.Screen
         name="Dashboard"
         component={DashboardScreen}
-        options={{ title: "Dashboard", tabBarIcon: tabBarIcon("Dashboard") }}
+        options={{
+          title: "Dashboard",
+          tabBarIcon: tabBarIcon("Dashboard"),
+          tabBarBadge: unseenCount > 0 ? unseenCount : undefined,
+        }}
       />
       <Tab.Screen
         name="Live"
@@ -57,6 +79,16 @@ export default function MainTabs() {
         name="History"
         component={AlertHistoryScreen}
         options={{ title: "History", tabBarIcon: tabBarIcon("History") }}
+      />
+      <Tab.Screen
+        name="Community"
+        component={CommunityScreen}
+        options={{ title: "Community", tabBarIcon: tabBarIcon("Community") }}
+      />
+      <Tab.Screen
+        name="Map"
+        component={CommunityMapScreen}
+        options={{ title: "Map", tabBarIcon: tabBarIcon("Map") }}
       />
       {isAdmin && (
         <Tab.Screen
