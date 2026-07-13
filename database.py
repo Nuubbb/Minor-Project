@@ -125,6 +125,57 @@ def get_all_events():
     return rows
 
 
+def delete_user(user_id, requester_username):
+    """Archive + delete a user. Returns ('ok', user_dict) / ('self', None) / ('not_found', None)."""
+    with sqlite3.connect(DATABASE) as conn:
+        conn.row_factory = sqlite3.Row
+        cursor = conn.cursor()
+        cursor.execute("SELECT id, username, email, role FROM users WHERE id=?", (user_id,))
+        user_to_delete = cursor.fetchone()
+
+        if not user_to_delete:
+            return "not_found", None
+
+        if user_to_delete["username"] == requester_username:
+            return "self", None
+
+        cursor.execute('''
+            INSERT INTO deleted_users (original_user_id, username, email, role, deleted_at)
+            VALUES (?, ?, ?, ?, ?)
+        ''', (user_to_delete["id"], user_to_delete["username"], user_to_delete["email"],
+              user_to_delete["role"], datetime.now().strftime("%Y-%m-%d %H:%M:%S")))
+
+        cursor.execute("DELETE FROM users WHERE id=?", (user_id,))
+        conn.commit()
+        return "ok", dict(user_to_delete)
+
+
+def delete_event(event_id):
+    """Archive + delete an event. Returns ('ok', event_dict) / ('not_found', None)."""
+    with sqlite3.connect(DATABASE) as conn:
+        conn.row_factory = sqlite3.Row
+        cursor = conn.cursor()
+        cursor.execute(
+            "SELECT id, event_date, name, start_hour, end_hour, expected_crowd FROM events WHERE id=?",
+            (event_id,)
+        )
+        event_to_delete = cursor.fetchone()
+
+        if not event_to_delete:
+            return "not_found", None
+
+        cursor.execute('''
+            INSERT INTO deleted_events (original_event_id, event_date, name, start_hour, end_hour, expected_crowd, deleted_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+        ''', (event_to_delete["id"], event_to_delete["event_date"], event_to_delete["name"],
+              event_to_delete["start_hour"], event_to_delete["end_hour"], event_to_delete["expected_crowd"],
+              datetime.now().strftime("%Y-%m-%d %H:%M:%S")))
+
+        cursor.execute("DELETE FROM events WHERE id=?", (event_id,))
+        conn.commit()
+        return "ok", dict(event_to_delete)
+
+
 def get_active_event():
     """If RIGHT NOW falls inside a scheduled event, return (name, expected_crowd); else None."""
     from datetime import datetime
