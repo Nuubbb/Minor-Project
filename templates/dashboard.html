@@ -5,22 +5,38 @@
     <title>Dashboard</title>
 </head>
 <body>
-    <nav>
-        <div><strong>SURVEILLANCE DESK</strong> | User: {{ username }}</div>
+    <!-- Updated nav with position relative for centering -->
+    <nav style="position: relative;">
+        <div><strong>SURVEILLANCE DESK</strong></div>
+        
+        <div style="position: absolute; left: 50%; transform: translateX(-50%); text-transform: uppercase;">
+            <strong>USER: {{ username }}</strong>
+        </div>
+
         <div>
             <a href="{{ url_for('dashboard') }}">Dashboard</a>
+            <!-- NEW: Link to the historical alerts page -->
+            <a href="{{ url_for('alerts_history') }}">Alerts History</a>
+            
             {% if role|lower == 'admin' %}<a href="{{ url_for('users') }}">Manage Users</a>{% endif %}
             {% if role|lower == 'admin' %}<a href="{{ url_for('events') }}">Events</a>{% endif %}
             <a href="{{ url_for('logout') }}" style="color: #f87171;">Logout</a>
         </div>
     </nav>
+    
     <div class="container">
         <div class="grid">
             <div class="card">
                 <h3>Visual Feed</h3>
                 <a href="{{ url_for('dashboard', live='true') }}" class="btn">Go Live (Webcam)</a>
-                <a href="{{ url_for('dashboard', live='true', video='demo.mp4') }}" class="btn" style="background:#dc2626;">Play Test Video</a>
-                <div class="video-container">
+                
+                <!-- NEW: CCTV Demo Button -->
+                <a href="{{ url_for('dashboard', live='true', video='cctv') }}" class="btn" style="background: #0ea5e9; margin-left: 5px;">Connect CCTV</a>
+                
+                <a href="{{ url_for('dashboard') }}" class="btn" style="background: #dc2626; margin-left: 5px; margin-right: 5px;">Stop Feed</a>
+                <a href="{{ url_for('dashboard', live='true', video='demo.mp4') }}" class="btn" style="background: #16a34a;">Play Test Video</a>
+                
+                <div class="video-container" style="margin-top: 15px;">
                     {% if run_live %}
                         <img src="{{ url_for('video_feed', video=request.args.get('video','')) }}">
                     {% else %}
@@ -28,19 +44,43 @@
                     {% endif %}
                 </div>
             </div>
+            
             <div class="card">
                 <h3>Alerts</h3>
-                <table id="alerts-tbody">
-                    {% for a in alerts %}
-                    <tr class="{{'false-alarm-row' if a[4] else 'alert-row'}}">
-                        <td>{{a[1].split()[1]}}</td><td>{{a[2]}}</td><td>{{(a[3]*100)|int}}%</td>
-                        <td>{% if not a[4] %}<form action="/mark_false_alarm/{{a[0]}}" method="POST"><button type="submit">Mark False</button></form>{% endif %}</td>
-                    </tr>
-                    {% endfor %}
-                </table>
+                <div style="max-height: 480px; overflow-y: auto; padding-right: 5px; margin-top: 15px;">
+                    <table id="alerts-tbody">
+                        {% for a in alerts %}
+                        <tr class="{{'false-alarm-row' if a[4] else 'alert-row'}}">
+                            <td>{{a[1].split()[1]}}</td>
+                            <td style="text-transform: capitalize;">{{a[2].replace('-', ' ')}}</td>
+                            <td>{{(a[3]*100)|int}}%</td>
+                            <td>
+                                {% if not a[4] %}
+                                <form action="/mark_false_alarm/{{a[0]}}" method="POST" style="margin: 0;">
+                                    <button type="submit" style="padding: 4px 8px; font-size: 0.8rem; background: #64748b;">Mark False</button>
+                                </form>
+                                {% else %}
+                                <span style="color: #64748b; font-weight: bold; font-size: 0.85rem;">Dismissed</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% else %}
+                        <tr>
+                            <td colspan="4" style="text-align: center; color: #64748b; padding: 20px;">No alerts logged yet.</td>
+                        </tr>
+                        {% endfor %}
+                    </table>
+                </div>
             </div>
         </div>
     </div>
-    <script>setInterval(()=>{fetch("/get_alerts").then(r=>r.text()).then(h=>document.getElementById('alerts-tbody').innerHTML=h)}, 3000);</script>
+    
+    <script>
+        setInterval(() => {
+            fetch("/get_alerts")
+                .then(r => r.text())
+                .then(h => document.getElementById('alerts-tbody').innerHTML = h)
+        }, 3000);
+    </script>
 </body>
 </html>

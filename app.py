@@ -1,8 +1,9 @@
 import sqlite3
 import cv2
-import winsound
 import threading
 import time
+import platform
+import os
 from datetime import datetime
 from flask import Flask, render_template, request, redirect, url_for, session, Response, flash, render_template_string
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -38,6 +39,22 @@ last_action = {}
 _last_email = {"t": 0.0}   # throttle emails: at most one per minute
 DISMISS_SECRET = "kec_surveillance_2026"   # MUST match email_alert.py
 TIER_COLOR = {LOG: (0, 255, 255), NOTIFY: (0, 165, 255), ALARM: (0, 0, 255)}
+
+
+def trigger_audio_alarm():
+    """Cross-platform function to play an alarm sound."""
+    try:
+        current_os = platform.system()
+        if current_os == "Windows":
+            import winsound
+            winsound.Beep(1000, 200)
+        elif current_os == "Darwin": # Mac OS
+            # The '&' runs it in the background so it doesn't freeze the video feed
+            os.system('afplay /System/Library/Sounds/Glass.aiff &')
+        else: # Linux or other
+            print('\a') # Triggers terminal bell
+    except Exception as e:
+        print(f"[audio] skip: {e}")
 
 
 def _should_act(alert_type):
@@ -104,28 +121,44 @@ def current_event():
     return _event_cache["active"]
 
 
-def generate_frames(operator_email=None, source=None):
+def generate_frames(operator_email=None, source=None, operator_username="system"):
     """Live feed: reads, detects, and yields frames. Stops AUTOMATICALLY when the
     browser disconnects (no background thread -> no alarms after logout)."""
-    camera = cv2.VideoCapture(source) if source else cv2.VideoCapture(0)
+    
+    # Optional: If you are using a CCTV camera, uncomment the next line and replace '0' below
+    # cctv_url = "rtsp://admin:SecurePass2026@192.168.1.150:554/cam/realmonitor?channel=1&subtype=1"
+    cctv_url = "rtsp://admin:YourPassword@192.168.1.150:554/Streaming/Channels/101"
+    
+    # Safest selection logic:
+    if source == 'cctv':
+        camera = cv2.VideoCapture(cctv_url)  # 1. Use CCTV if specifically requested
+    elif source:
+        camera = cv2.VideoCapture(source)    # 2. Use demo.mp4 if requested
+    else:
+        camera = cv2.VideoCapture(0)
+    
     violence_detector.buffer.clear(); violence_detector.prob_hist.clear(); violence_detector._count = 0
     fail_count = 0
-    DETECT_EVERY = 4                      # person detection frequency (fast model)
-    WEAPON_EVERY = 15                     # weapon detection frequency (heavy model -> run rarely)
+    DETECT_EVERY = 15  # Optimized person detection frequency
+    WEAPON_EVERY = 10  # Optimized weapon detection frequency 
     frame_no = 0
     person_boxes, weapon_boxes = [], []
     person_count, track_ids, weapons = 0, [], []
+    
     try:
         while True:
             success, frame = camera.read()
             if not success:
-                if source:                              # VIDEO FILE -> loop back to the start
+                if source:  # VIDEO FILE -> loop back to the start
                     camera.set(cv2.CAP_PROP_POS_FRAMES, 0)
                     fail_count += 1
                     if fail_count > 5:
                         break
                     continue
-                break
+                # CCTV/Network drop handling: wait a fraction of a second and try again
+                time.sleep(0.1)
+                continue
+                
             fail_count = 0
             frame = cv2.resize(frame, (640, 480))
 
@@ -136,6 +169,7 @@ def generate_frames(operator_email=None, source=None):
                 person_boxes, person_count, track_ids = _detect_persons(frame)
             if frame_no % WEAPON_EVERY == 0:
                 weapon_boxes, weapons = _detect_weapons(frame)
+            
             img = _draw_boxes(frame.copy(), person_boxes + weapon_boxes)
 
             ev = current_event()
@@ -144,23 +178,25 @@ def generate_frames(operator_email=None, source=None):
                 person_count=person_count, track_ids=track_ids,
                 current_hour=datetime.now().hour,
                 event_active=ev is not None,
-                event_expected_crowd=(ev[1] if ev else 0))
+                event_expected_crowd=(ev[1] if ev else 0)
+            )
 
             if tier != IGNORE:
                 cv2.putText(img, message, (20, 50), cv2.FONT_HERSHEY_SIMPLEX,
                             0.8, TIER_COLOR.get(tier, (0, 0, 255)), 2)
+                            
                 if _should_act(alert_type):
-                    new_id = log_alert(alert_type, conf)
+                    # Pass the logged-in operator's username to the database logger
+                    new_id = log_alert(alert_type, conf, operator_username)
+                    
                     if tier == ALARM:
-                        try:
-                            winsound.Beep(1000, 200)
-                        except Exception:
-                            pass
-                        if operator_email and send_email_alert and (time.time() - _last_email["t"] > 60):
-                            _last_email["t"] = time.time()      # max ONE email per minute
-                            threading.Thread(target=send_email_alert,
-                                             args=(operator_email, message, new_id),
-                                             daemon=True).start()   # non-blocking
+                        trigger_audio_alarm()
+                    
+                    if operator_email and send_email_alert and (time.time() - _last_email["t"] > 60):
+                        _last_email["t"] = time.time()  # max ONE email per minute
+                        threading.Thread(target=send_email_alert,
+                                         args=(operator_email, message, new_id),
+                                         daemon=True).start()  # non-blocking
 
             cv2.putText(img, f"Violence: {violence_prob:.2f}", (20, 90),
                         cv2.FONT_HERSHEY_SIMPLEX, 0.7,
@@ -169,10 +205,9 @@ def generate_frames(operator_email=None, source=None):
             ret, buffer = cv2.imencode('.jpg', img, [cv2.IMWRITE_JPEG_QUALITY, 70])
             yield (b'--frame\r\n' b'Content-Type: image/jpeg\r\n\r\n' + buffer.tobytes() + b'\r\n')
     finally:
-        camera.release()          # always release when the browser disconnects
+        camera.release()  # always release when the browser disconnects
 
-
-# ================= SUDARSHAN'S ROUTES (unchanged) =================
+# ================= SUDARSHAN'S ROUTES =================
 
 @app.route('/')
 def index():
@@ -186,23 +221,29 @@ def login(role_type):
     role_type = role_type.capitalize()
     if role_type not in ['Admin', 'Operator']:
         return redirect(url_for('index'))
+        
     if request.method == 'POST':
-        username = request.form['username']
+        login_id = request.form['username'] 
         password = request.form['password']
+        
         with sqlite3.connect(DATABASE) as conn:
             conn.row_factory = sqlite3.Row
             cursor = conn.cursor()
-            cursor.execute("SELECT * FROM users WHERE username=?", (username,))
+            
+            cursor.execute("SELECT * FROM users WHERE username=? OR email=?", (login_id, login_id))
             user = cursor.fetchone()
+            
             if user and check_password_hash(user['password'], password):
                 if user['role'].lower() == role_type.lower():
                     session['username'] = user['username']
                     session['role'] = user['role']
+                    session['login_time'] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
                     return redirect(url_for('dashboard'))
                 else:
                     flash(f"Access Denied: This account does not have {role_type} privileges.", "error")
             else:
-                flash("Invalid username or password.", "error")
+                flash("Invalid username/email or password.", "error")
+                
     return render_template('login.html', role_type=role_type)
 
 
@@ -211,17 +252,25 @@ def signup():
     if request.method == 'POST':
         username = request.form['username']
         password = request.form['password']
+        email = request.form['email']
+        
         with sqlite3.connect(DATABASE) as conn:
             cursor = conn.cursor()
             cursor.execute("SELECT * FROM users WHERE username=?", (username,))
             if cursor.fetchone():
                 flash("Username already exists.", "error")
                 return redirect(url_for('signup'))
+                
             hashed_pw = generate_password_hash(password)
-            cursor.execute("INSERT INTO users (username, password, role) VALUES (?, ?, 'Operator')", (username, hashed_pw))
+            cursor.execute(
+                "INSERT INTO users (username, password, email, role) VALUES (?, ?, ?, 'Operator')", 
+                (username, hashed_pw, email)
+            )
             conn.commit()
+            
         flash("Account created! Please log in to the Operator portal.", "success")
         return redirect(url_for('login', role_type='operator'))
+        
     return render_template('signup.html')
 
 
@@ -230,13 +279,16 @@ def dashboard():
     if 'username' not in session:
         return redirect(url_for('index'))
     run_live = request.args.get('live', 'false') == 'true'
+    
+    login_time = session.get('login_time', '1970-01-01 00:00:00')
+    
     with sqlite3.connect(DATABASE) as conn:
         conn.row_factory = sqlite3.Row
         cursor = conn.cursor()
-        cursor.execute("SELECT * FROM alerts ORDER BY timestamp DESC LIMIT 15")
+        cursor.execute("SELECT * FROM alerts WHERE timestamp >= ? ORDER BY timestamp DESC", (login_time,))
         alerts = cursor.fetchall()
+        
     return render_template('dashboard.html', username=session['username'], role=session['role'], alerts=alerts, run_live=run_live)
-
 
 @app.route('/video_feed')
 def video_feed():
@@ -248,8 +300,9 @@ def video_feed():
         row = conn.execute("SELECT email FROM users WHERE username=?", (session['username'],)).fetchone()
         if row:
             operator_email = row['email']
+            
     video = request.args.get('video') or None
-    return Response(generate_frames(operator_email, source=video),
+    return Response(generate_frames(operator_email, source=video, operator_username=session['username']),
                     mimetype='multipart/x-mixed-replace; boundary=frame')
 
 
@@ -257,10 +310,13 @@ def video_feed():
 def get_alerts():
     if 'username' not in session:
         return "Unauthorized", 401
+        
+    login_time = session.get('login_time', '1970-01-01 00:00:00')
+    
     with sqlite3.connect(DATABASE) as conn:
         conn.row_factory = sqlite3.Row
         cursor = conn.cursor()
-        cursor.execute("SELECT * FROM alerts ORDER BY timestamp DESC LIMIT 15")
+        cursor.execute("SELECT * FROM alerts WHERE timestamp >= ? ORDER BY timestamp DESC", (login_time,))
         alerts = cursor.fetchall()
     row_template = """
     {% for alert in alerts %}
@@ -292,6 +348,28 @@ def get_alerts():
     return render_template_string(row_template, alerts=alerts)
 
 
+@app.route('/alerts_history')
+def alerts_history():
+    if 'username' not in session:
+        return redirect(url_for('index'))
+        
+    current_role = session.get('role', '').lower()
+    current_username = session['username']
+        
+    with sqlite3.connect(DATABASE) as conn:
+        conn.row_factory = sqlite3.Row
+        cursor = conn.cursor()
+        
+        if current_role == 'admin':
+            cursor.execute("SELECT * FROM alerts ORDER BY timestamp DESC")
+        else:
+            cursor.execute("SELECT * FROM alerts WHERE operator_username=? ORDER BY timestamp DESC", (current_username,))
+            
+        all_alerts = [dict(row) for row in cursor.fetchall()]
+        
+    return render_template('alerts.html', username=current_username, role=session.get('role', ''), alerts=all_alerts)
+
+
 @app.route('/mark_false_alarm/<int:alert_id>', methods=['POST'])
 def flag_false_alarm(alert_id):
     if 'username' not in session:
@@ -308,18 +386,55 @@ def users():
     if not current_role or current_role.lower() != 'admin':
         flash("Access Denied: Administrator privileges required.", "error")
         return redirect(url_for('dashboard'))
+        
     with sqlite3.connect(DATABASE) as conn:
         conn.row_factory = sqlite3.Row
         cursor = conn.cursor()
-        cursor.execute("SELECT id, username, role FROM users")
-        all_users = cursor.fetchall()
-    return render_template('users.html', username=session['username'], role=current_role, users=all_users)
+        
+        cursor.execute("SELECT id, username, email, role FROM users")
+        active_users = cursor.fetchall()
+        
+        cursor.execute("SELECT original_user_id, username, email, role, deleted_at FROM deleted_users ORDER BY deleted_at DESC")
+        archived_users = cursor.fetchall()
+        
+    return render_template('users.html', 
+                           username=session['username'], 
+                           role=current_role, 
+                           users=active_users, 
+                           deleted_users=archived_users)
 
+
+@app.route('/delete_user/<int:user_id>', methods=['POST'])
+def delete_user(user_id):
+    if 'username' not in session or session.get('role', '').lower() != 'admin':
+        return redirect(url_for('index'))
+        
+    with sqlite3.connect(DATABASE) as conn:
+        cursor = conn.cursor()
+        
+        cursor.execute("SELECT id, username, email, role FROM users WHERE id=?", (user_id,))
+        user_to_delete = cursor.fetchone()
+        
+        if user_to_delete:
+            if user_to_delete[1] == session['username']:
+                flash("You cannot delete your own active admin account.", "error")
+            else:
+                cursor.execute('''
+                    INSERT INTO deleted_users (original_user_id, username, email, role, deleted_at)
+                    VALUES (?, ?, ?, ?, ?)
+                ''', (user_to_delete[0], user_to_delete[1], user_to_delete[2], user_to_delete[3], datetime.now().strftime("%Y-%m-%d %H:%M:%S")))
+                
+                cursor.execute("DELETE FROM users WHERE id=?", (user_id,))
+                conn.commit()
+                flash("User successfully removed and archived.", "success")
+        else:
+            flash("User not found.", "error")
+            
+    return redirect(url_for('users'))
 
 
 @app.route('/dismiss/<int:alert_id>/<token>')
 def dismiss_alert(alert_id, token):
-    """One-click 'false alarm' button from the alert email lands here."""
     if token != DISMISS_SECRET:
         return "Invalid or expired dismissal link.", 403
     mark_false_alarm(alert_id)
@@ -334,7 +449,6 @@ def dismiss_alert(alert_id, token):
     return render_template_string(confirm.replace("{{ aid }}", str(alert_id)))
 
 
-
 @app.route('/events')
 def events():
     if 'username' not in session:
@@ -342,8 +456,44 @@ def events():
     if session.get('role', '').lower() != 'admin':
         flash("Access Denied: Administrator privileges required.", "error")
         return redirect(url_for('dashboard'))
-    return render_template('events.html', username=session['username'],
-                           role=session['role'], events=get_all_events())
+        
+    with sqlite3.connect(DATABASE) as conn:
+        conn.row_factory = sqlite3.Row
+        cursor = conn.cursor()
+        
+        cursor.execute("SELECT * FROM events ORDER BY event_date DESC")
+        active_events = cursor.fetchall()
+        
+        cursor.execute("SELECT * FROM deleted_events ORDER BY deleted_at DESC")
+        archived_events = cursor.fetchall()
+        
+    return render_template('events.html', username=session['username'], role=session['role'], events=active_events, deleted_events=archived_events)
+
+
+@app.route('/delete_event/<int:event_id>', methods=['POST'])
+def delete_event(event_id):
+    if 'username' not in session or session.get('role', '').lower() != 'admin':
+        return redirect(url_for('index'))
+        
+    with sqlite3.connect(DATABASE) as conn:
+        cursor = conn.cursor()
+        
+        cursor.execute("SELECT id, event_date, name, start_hour, end_hour, expected_crowd FROM events WHERE id=?", (event_id,))
+        event_to_delete = cursor.fetchone()
+        
+        if event_to_delete:
+            cursor.execute('''
+                INSERT INTO deleted_events (original_event_id, event_date, name, start_hour, end_hour, expected_crowd, deleted_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?)
+            ''', (event_to_delete[0], event_to_delete[1], event_to_delete[2], event_to_delete[3], event_to_delete[4], event_to_delete[5], datetime.now().strftime("%Y-%m-%d %H:%M:%S")))
+            
+            cursor.execute("DELETE FROM events WHERE id=?", (event_id,))
+            conn.commit()
+            flash("Event successfully removed and archived.", "success")
+        else:
+            flash("Event not found.", "error")
+            
+    return redirect(url_for('events'))
 
 
 @app.route('/events/add', methods=['POST'])
@@ -363,5 +513,35 @@ def logout():
     return redirect(url_for('index'))
 
 
+@app.route('/database_viewer')
+def database_viewer():
+    conn = sqlite3.connect('database.db')
+    conn.row_factory = sqlite3.Row  
+    cursor = conn.cursor()
+
+    cursor.execute("SELECT * FROM users")
+    all_users = cursor.fetchall()
+
+    cursor.execute("SELECT * FROM deleted_users")
+    del_users = cursor.fetchall()
+
+    cursor.execute("SELECT * FROM events")
+    all_events = cursor.fetchall()
+
+    cursor.execute("SELECT * FROM deleted_events")
+    del_events = cursor.fetchall()
+
+    cursor.execute("SELECT * FROM alerts ORDER BY timestamp DESC")
+    all_alerts = cursor.fetchall()
+
+    conn.close()
+
+    return render_template('database_viewer.html', 
+                           users=all_users, 
+                           deleted_users=del_users,
+                           events=all_events, 
+                           deleted_events=del_events,
+                           alerts=all_alerts)
+
 if __name__ == '__main__':
-    app.run(debug=True, port=5000, threaded=True)
+    app.run(debug=True, port=5001, threaded=True)

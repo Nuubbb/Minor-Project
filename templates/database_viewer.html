@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Master Database Viewer</title>
+    <style>
+        body { font-family: Arial, sans-serif; background-color: #f3f4f6; padding: 20px; }
+        .container { max-width: 1000px; margin: auto; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        h1 { text-align: center; color: #1f2937; }
+        h2 { color: #2563eb; margin-top: 30px; border-bottom: 2px solid #e5e7eb; padding-bottom: 5px; }
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 14px; }
+        th, td { padding: 10px; border: 1px solid #e5e7eb; text-align: left; }
+        th { background-color: #f8fafc; color: #475569; }
+        tr:nth-child(even) { background-color: #f8fafc; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>Master Database System</h1>
+
+    <h2>1. Active Users</h2>
+    <table>
+        <tr><th>ID</th><th>Username</th><th>Email</th><th>Role</th></tr>
+        {% for user in users %}
+        <tr><td>{{ user.id }}</td><td>{{ user.username }}</td><td>{{ user.email }}</td><td>{{ user.role }}</td></tr>
+        {% endfor %}
+    </table>
+
+    <h2>2. Alerts & Incident Logs</h2>
+    <table>
+        <tr><th>ID</th><th>Timestamp</th><th>Alert Type</th><th>Confidence</th><th>Operator</th></tr>
+        {% for alert in alerts %}
+        <tr><td>{{ alert.id }}</td><td>{{ alert.timestamp }}</td><td>{{ alert.alert_type }}</td><td>{{ alert.confidence }}</td><td>{{ alert.operator_username }}</td></tr>
+        {% endfor %}
+    </table>
+
+    <h2>3. Scheduled Events</h2>
+    <table>
+        <tr><th>ID</th><th>Date</th><th>Name</th><th>Start</th><th>End</th><th>Expected Crowd</th></tr>
+        {% for ev in events %}
+        <tr><td>{{ ev.id }}</td><td>{{ ev.event_date }}</td><td>{{ ev.name }}</td><td>{{ ev.start_hour }}</td><td>{{ ev.end_hour }}</td><td>{{ ev.expected_crowd }}</td></tr>
+        {% endfor %}
+    </table>
+
+    <h2>4. Deleted Users (Archive)</h2>
+    <table>
+        <tr><th>Original ID</th><th>Username</th><th>Role</th><th>Deleted At</th></tr>
+        {% for du in deleted_users %}
+        <tr><td>{{ du.original_user_id }}</td><td>{{ du.username }}</td><td>{{ du.role }}</td><td>{{ du.deleted_at }}</td></tr>
+        {% endfor %}
+    </table>
+
+    <h2>5. Deleted Events (Archive)</h2>
+    <table>
+        <tr><th>Original ID</th><th>Name</th><th>Date</th><th>Deleted At</th></tr>
+        {% for de in deleted_events %}
+        <tr><td>{{ de.original_event_id }}</td><td>{{ de.name }}</td><td>{{ de.event_date }}</td><td>{{ de.deleted_at }}</td></tr>
+        {% endfor %}
+    </table>
+</div>
+
+</body>
+</html>

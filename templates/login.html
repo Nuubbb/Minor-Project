@@ -4,9 +4,30 @@
     <meta charset="UTF-8">
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
     <title>{{ role_type }} Login - AI Surveillance</title>
+    <style>
+        /* NEW: Custom styling for the back button */
+        .back-link {
+            color: #000000;
+            text-decoration: none;
+            font-size: 1.1rem;
+            font-weight: 600;
+            transition: all 0.2s ease;
+        }
+        .back-link:hover {
+            text-decoration: underline;
+        }
+    </style>
 </head>
 <body style="display: flex; justify-content: center; align-items: center; min-height: 100vh;">
     <div class="login-box">
+        
+        <div style="margin-bottom: 20px;">
+            <!-- Updated to use the new back-link class -->
+            <a href="{{ url_for('index') }}" class="back-link">
+                &larr; Back to Portal Selection
+            </a>
+        </div>
+
         <h2 style="text-align: center; margin-top: 0; color: #1e293b;">{{ role_type }} Portal</h2>
         
         {% with messages = get_flashed_messages(with_categories=true) %}
@@ -18,8 +39,8 @@
         {% endwith %}
 
         <form method="POST" action="{{ url_for('login', role_type=role_type.lower()) }}">
-            <label style="font-weight: 500; color: #475569;">Username</label>
-            <input type="text" name="username" placeholder="Enter ID" required>
+            <label style="font-weight: 500; color: #475569;">Username or Email</label>
+            <input type="text" name="username" placeholder="Enter Username or Email" required>
             
             <label style="font-weight: 500; color: #475569;">Password</label>
             <input type="password" name="password" placeholder="Enter password" required>

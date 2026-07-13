@@ -1,15 +1,118 @@
 <!DOCTYPE html>
 <html lang="en">
-<head><link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}"><title>Manage Users</title></head>
+<head>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <title>Manage Users</title>
+</head>
 <body>
-    <nav><div><strong>SURVEILLANCE DESK</strong></div><div><a href="{{ url_for('dashboard') }}">Dashboard</a><a href="{{ url_for('logout') }}">Logout</a></div></nav>
-    <div class="container">
-        <div class="card">
-            <table>
-                <thead><tr><th>ID</th><th>User</th><th>Role</th></tr></thead>
-                <tbody>{% for u in users %}<tr><td>{{u[0]}}</td><td>{{u[1]}}</td><td>{{u[3]}}</td></tr>{% endfor %}</tbody>
+    <!-- Updated Navbar to match the centered design of the Dashboard -->
+    <nav style="position: relative;">
+        <div><strong>SURVEILLANCE DESK</strong></div>
+        
+        <div style="position: absolute; left: 50%; transform: translateX(-50%); text-transform: uppercase;">
+            <strong>USER: {{ username }}</strong>
+        </div>
+
+        <div>
+            <a href="{{ url_for('dashboard') }}">Dashboard</a>
+            <a href="{{ url_for('alerts_history') }}">Alerts History</a>
+            <a href="{{ url_for('users') }}" style="color: white; font-weight: bold;">Manage Users</a>
+            <a href="{{ url_for('events') }}">Events</a>
+            <a href="{{ url_for('logout') }}" style="color: #f87171;">Logout</a>
+        </div>
+    </nav>
+    
+    <div class="container" style="color: black;">
+        
+        <!-- CARD 1: Active Users -->
+        <div class="card" style="margin-bottom: 25px;">
+            <h3 style="margin-bottom: 15px; font-size: 1.2rem; color: black;">Active Users</h3>
+            
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    {% for category, message in messages %}
+                        <div class="flash {{ category }}" style="margin-bottom: 15px; padding: 10px; background: #e2e8f0; border-radius: 5px; font-size: 1rem; color: black;">{{ message }}</div>
+                    {% endfor %}
+                {% endif %}
+            {% endwith %}
+
+            <table style="width: 100%; border-collapse: collapse; text-align: left;">
+                <thead>
+                    <tr style="background-color: #f8fafc; border-bottom: 2px solid #cbd5e1;">
+                        <th style="padding: 12px; font-size: 1rem; color: black;">ID</th>
+                        <th style="padding: 12px; font-size: 1rem; color: black;">Username</th>
+                        <th style="padding: 12px; font-size: 1rem; color: black;">Email</th>
+                        <th style="padding: 12px; font-size: 1rem; color: black;">Role</th>
+                        <th style="padding: 12px; font-size: 1rem; color: black;">Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for u in users %}
+                    <tr style="border-bottom: 1px solid #e2e8f0;">
+                        <td style="padding: 12px; font-size: 1rem; color: black;">#{{ u['id'] }}</td>
+                        <td style="padding: 12px; font-weight: bold; font-size: 1rem; color: black;">{{ u['username'] }}</td>
+                        <td style="padding: 12px; font-size: 1rem; color: black;">{{ u['email'] if u['email'] else 'No Email Provided' }}</td>
+                        <td style="padding: 12px; font-size: 1rem; color: black;">
+                            <span style="background: #e0f2fe; padding: 4px 8px; border-radius: 4px; font-size: 1rem; color: black;">{{ u['role'] }}</span>
+                        </td>
+                        <td style="padding: 12px; font-size: 1rem; color: black;">
+                            {% if u['username'] != username %}
+                                <form action="{{ url_for('delete_user', user_id=u['id']) }}" method="POST" style="margin: 0;" onsubmit="return confirm('Are you sure you want to remove this user? Their data will be archived.');">
+                                    <button type="submit" class="btn" style="background: #ef4444; padding: 6px 12px; font-size: 1rem; border: none; color: white; cursor: pointer; border-radius: 4px;">Delete</button>
+                                </form>
+                            {% else %}
+                                <span style="font-size: 1rem; font-style: italic; color: black;">Current User</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="5" style="text-align: center; padding: 25px; font-size: 1rem; color: black;">No active users found.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
             </table>
         </div>
+        
+        <!-- CARD 2: Deleted (Archived) Users -->
+        <div class="card">
+            <h3 style="margin-bottom: 15px; font-size: 1.2rem; color: black;">Archived Users</h3>
+            <p style="font-size: 1rem; margin-top: -10px; margin-bottom: 15px; color: black;">These accounts have been removed and can no longer access the system.</p>
+            
+            <div style="max-height: 400px; overflow-y: auto; padding-right: 5px;">
+                <table style="width: 100%; border-collapse: collapse; text-align: left;">
+                    <thead>
+                        <tr style="background-color: #f1f5f9; border-bottom: 2px solid #cbd5e1;">
+                            <th style="padding: 12px; font-size: 1rem; color: black;">Original ID</th>
+                            <th style="padding: 12px; font-size: 1rem; color: black;">Username</th>
+                            <th style="padding: 12px; font-size: 1rem; color: black;">Email</th>
+                            <th style="padding: 12px; font-size: 1rem; color: black;">Role</th>
+                            <th style="padding: 12px; font-size: 1rem; color: black;">Deleted At</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for du in deleted_users %}
+                        <tr style="border-bottom: 1px solid #e2e8f0; background-color: #f8fafc; opacity: 0.8;">
+                            <td style="padding: 12px; font-size: 1rem; color: black;">#{{ du['original_user_id'] }}</td>
+                            <td style="padding: 12px; font-weight: bold; font-size: 1rem; color: black;">{{ du['username'] }}</td>
+                            <td style="padding: 12px; font-size: 1rem; color: black;">{{ du['email'] if du['email'] else 'N/A' }}</td>
+                            <td style="padding: 12px; font-size: 1rem; color: black;">
+                                <span style="background: #f1f5f9; padding: 4px 8px; border-radius: 4px; font-size: 1rem; color: black;">{{ du['role'] }}</span>
+                            </td>
+                            <td style="padding: 12px; font-size: 1rem; font-weight: 500; color: black;">
+                                {{ du['deleted_at'] }}
+                            </td>
+                        </tr>
+                        {% else %}
+                        <tr>
+                            <td colspan="5" style="text-align: center; padding: 25px; font-size: 1rem; color: black;">No deleted users in the archive.</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        
     </div>
 </body>
 </html>
