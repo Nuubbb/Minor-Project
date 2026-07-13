@@ -1,16 +1,20 @@
 import React from "react";
 import { View, Text, FlatList, TouchableOpacity, StyleSheet, RefreshControl } from "react-native";
+import { useNavigation } from "@react-navigation/native";
+import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { Alert } from "../types";
+import type { RootStackParamList } from "../navigation/types";
 
 interface Props {
   alerts: Alert[];
-  onMarkFalse?: (alertId: number) => void;
   refreshing?: boolean;
   onRefresh?: () => void;
   emptyLabel?: string;
 }
 
-export default function AlertList({ alerts, onMarkFalse, refreshing, onRefresh, emptyLabel }: Props) {
+export default function AlertList({ alerts, refreshing, onRefresh, emptyLabel }: Props) {
+  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+
   return (
     <FlatList
       data={alerts}
@@ -28,18 +32,19 @@ export default function AlertList({ alerts, onMarkFalse, refreshing, onRefresh, 
               {item.timestamp} · {(item.confidence * 100).toFixed(0)}% · {item.operator_username}
             </Text>
           </View>
-          {item.is_false_alarm ? (
-            <Text style={styles.dismissed}>Dismissed</Text>
-          ) : (
-            <View style={styles.rowActions}>
+          <View style={styles.rowActions}>
+            {item.is_false_alarm ? (
+              <Text style={styles.dismissed}>Dismissed</Text>
+            ) : (
               <Text style={styles.active}>Active</Text>
-              {onMarkFalse && (
-                <TouchableOpacity style={styles.markButton} onPress={() => onMarkFalse(item.id)}>
-                  <Text style={styles.markButtonText}>Mark False</Text>
-                </TouchableOpacity>
-              )}
-            </View>
-          )}
+            )}
+            <TouchableOpacity
+              style={styles.lookButton}
+              onPress={() => navigation.navigate("AlertValidator", { alertId: item.id })}
+            >
+              <Text style={styles.lookButtonText}>Take a look</Text>
+            </TouchableOpacity>
+          </View>
         </View>
       )}
     />
@@ -62,9 +67,9 @@ const styles = StyleSheet.create({
   meta: { color: "#94a3b8", fontSize: 12 },
   rowActions: { alignItems: "flex-end" },
   active: { color: "#f87171", fontWeight: "700", fontSize: 12, marginBottom: 6 },
-  dismissed: { color: "#64748b", fontWeight: "700", fontSize: 12 },
-  markButton: { backgroundColor: "#334155", paddingHorizontal: 10, paddingVertical: 6, borderRadius: 6 },
-  markButtonText: { color: "#e2e8f0", fontSize: 11, fontWeight: "600" },
+  dismissed: { color: "#64748b", fontWeight: "700", fontSize: 12, marginBottom: 6 },
+  lookButton: { backgroundColor: "#2563eb", paddingHorizontal: 10, paddingVertical: 6, borderRadius: 6 },
+  lookButtonText: { color: "#fff", fontSize: 11, fontWeight: "600" },
   emptyContainer: { flexGrow: 1, justifyContent: "center", alignItems: "center" },
   emptyText: { color: "#64748b", textAlign: "center", marginTop: 40 },
 });

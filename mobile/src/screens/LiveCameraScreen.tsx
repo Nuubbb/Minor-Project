@@ -15,18 +15,42 @@ function buildHtml(url: string) {
   <body><img src="${url}" /></body></html>`;
 }
 
+type Source = "webcam" | "cctv";
+
 export default function LiveCameraScreen() {
   const { user } = useAuth();
   const [loading, setLoading] = useState(true);
   const [reloadKey, setReloadKey] = useState(0);
+  const [source, setSource] = useState<Source>("webcam");
   const webviewRef = useRef<WebView>(null);
 
   if (!user) return null;
 
-  const url = videoFeedUrl(user.token);
+  const url = videoFeedUrl(user.token, source === "cctv" ? "cctv" : undefined);
+
+  const switchSource = (next: Source) => {
+    if (next === source) return;
+    setSource(next);
+    setLoading(true);
+    setReloadKey((k) => k + 1);
+  };
 
   return (
     <View style={styles.container}>
+      <View style={styles.sourceRow}>
+        {(["webcam", "cctv"] as Source[]).map((s) => (
+          <TouchableOpacity
+            key={s}
+            style={[styles.sourceButton, source === s && styles.sourceButtonActive]}
+            onPress={() => switchSource(s)}
+          >
+            <Text style={[styles.sourceButtonText, source === s && styles.sourceButtonTextActive]}>
+              {s === "webcam" ? "Webcam" : "CCTV"}
+            </Text>
+          </TouchableOpacity>
+        ))}
+      </View>
+
       <WebView
         key={reloadKey}
         ref={webviewRef}
@@ -37,7 +61,9 @@ export default function LiveCameraScreen() {
       {loading && (
         <View style={styles.overlay}>
           <ActivityIndicator size="large" color="#fff" />
-          <Text style={styles.overlayText}>Connecting to camera…</Text>
+          <Text style={styles.overlayText}>
+            Connecting to {source === "cctv" ? "CCTV" : "webcam"}…
+          </Text>
         </View>
       )}
       <TouchableOpacity
@@ -55,6 +81,20 @@ export default function LiveCameraScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "#000" },
+  sourceRow: {
+    position: "absolute",
+    top: 16,
+    right: 16,
+    zIndex: 10,
+    flexDirection: "row",
+    backgroundColor: "rgba(15,23,42,0.85)",
+    borderRadius: 10,
+    padding: 3,
+  },
+  sourceButton: { paddingHorizontal: 14, paddingVertical: 8, borderRadius: 8 },
+  sourceButtonActive: { backgroundColor: "#2563eb" },
+  sourceButtonText: { color: "#94a3b8", fontWeight: "600", fontSize: 12 },
+  sourceButtonTextActive: { color: "#fff" },
   webview: { flex: 1, backgroundColor: "#000" },
   overlay: {
     ...StyleSheet.absoluteFill,

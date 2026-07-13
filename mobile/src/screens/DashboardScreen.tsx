@@ -1,8 +1,10 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { View, Text, StyleSheet, TouchableOpacity } from "react-native";
 import type { BottomTabScreenProps } from "@react-navigation/bottom-tabs";
+import { useFocusEffect } from "@react-navigation/native";
 import { useAuth } from "../context/AuthContext";
-import { getAlerts, markFalseAlarm } from "../api/alerts";
+import { useAlertBadge } from "../context/AlertBadgeContext";
+import { getAlerts } from "../api/alerts";
 import { Alert } from "../types";
 import AlertList from "../components/AlertList";
 import type { MainTabParamList } from "../navigation/types";
@@ -13,9 +15,16 @@ type Props = BottomTabScreenProps<MainTabParamList, "Dashboard">;
 
 export default function DashboardScreen({ navigation }: Props) {
   const { user } = useAuth();
+  const { markSeen } = useAlertBadge();
   const [alerts, setAlerts] = useState<Alert[]>([]);
   const [refreshing, setRefreshing] = useState(false);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  useFocusEffect(
+    useCallback(() => {
+      markSeen();
+    }, [markSeen])
+  );
 
   const load = useCallback(async () => {
     try {
@@ -40,15 +49,6 @@ export default function DashboardScreen({ navigation }: Props) {
     setRefreshing(false);
   };
 
-  const onMarkFalse = async (alertId: number) => {
-    setAlerts((prev) => prev.map((a) => (a.id === alertId ? { ...a, is_false_alarm: true } : a)));
-    try {
-      await markFalseAlarm(alertId);
-    } catch {
-      load();
-    }
-  };
-
   const activeCount = alerts.filter((a) => !a.is_false_alarm).length;
 
   return (
@@ -65,7 +65,7 @@ export default function DashboardScreen({ navigation }: Props) {
         </TouchableOpacity>
       </View>
 
-      <AlertList alerts={alerts} onMarkFalse={onMarkFalse} refreshing={refreshing} onRefresh={onRefresh} />
+      <AlertList alerts={alerts} refreshing={refreshing} onRefresh={onRefresh} />
     </View>
   );
 }

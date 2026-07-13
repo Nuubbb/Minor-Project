@@ -1,11 +1,20 @@
 import sqlite3
-from flask import Blueprint, request, jsonify, Response
+from flask import Blueprint, request, jsonify, Response, send_file
 from werkzeug.security import generate_password_hash, check_password_hash
 
 from database import (DATABASE, mark_false_alarm, get_all_events, add_event,
-                       delete_user, delete_event)
+                       delete_user, delete_event, get_community_members,
+                       add_community_member, delete_community_member,
+                       get_device_location, update_device_location,
+                       log_alert, create_peer_report, get_pending_reports_for,
+                       get_peer_report, resolve_peer_report)
 from auth import issue_token, token_required, admin_required
 from detection import generate_frames
+from config import SCREENSHOT_DIR
+try:
+    from email_alert import send_community_alert
+except Exception:
+    send_community_alert = None
 
 api_bp = Blueprint("api", __name__, url_prefix="/api")
 
@@ -36,12 +45,23 @@ def _row_to_user(row):
     return {"id": row["id"], "username": row["username"], "email": row["email"], "role": row["role"]}
 
 
+def _row_to_community_member(row):
+    return {
+        "id": row["id"],
+        "name": row["name"],
+        "email": row["email"],
+        "phone": row["phone"],
+        "lat": row["lat"],
+        "lng": row["lng"],
+    }
+
+
 # ----------------- AUTH -----------------
 
 @api_bp.route("/login/<role_type>", methods=["POST"])
 def api_login(role_type):
     role_type = role_type.capitalize()
-    if role_type not in ("Admin", "Operator"):
+    if role_type not in ("Admin", "Operator", "Resident"):
         return jsonify({"error": "Invalid role"}), 400
 
     data = request.get_json(silent=True) or {}
@@ -221,3 +241,225 @@ def api_delete_user(user_id):
     if status == "self":
         return jsonify({"error": "You cannot delete your own active admin account."}), 400
     return jsonify({"message": "User successfully removed and archived."})
+
+
+# ----------------- COMMUNITY (Resident accounts) -----------------
+
+@api_bp.route("/community")
+@token_required
+def api_community():
+    return jsonify({"community": [_row_to_community_member(m) for m in get_community_members()]})
+
+
+@api_bp.route("/community", methods=["POST"])
+@token_required
+@admin_required
+def api_add_community_member():
+    data = request.get_json(silent=True) or {}
+    if not data.get("name") or not data.get("email"):
+        return jsonify({"error": "name and email are required"}), 400
+    username, password = add_community_member(
+        data["name"], data["email"], data.get("phone"), data.get("lat"), data.get("lng")
+    )
+    return jsonify({
+        "message": "Resident account created.",
+        "username": username,
+        "password": password,
+    }), 201
+
+
+@api_bp.route("/community/<int:member_id>", methods=["DELETE"])
+@token_required
+@admin_required
+def api_delete_community_member(member_id):
+    status = delete_community_member(member_id)
+    if status == "not_found":
+        return jsonify({"error": "Community member not found."}), 404
+    return jsonify({"message": "Community member removed."})
+
+
+# ----------------- DEVICE LOCATION -----------------
+
+@api_bp.route("/device_location")
+@token_required
+def api_device_location():
+    return jsonify(get_device_location())
+
+
+@api_bp.route("/device_location", methods=["PUT"])
+@token_required
+@admin_required
+def api_update_device_location():
+    data = request.get_json(silent=True) or {}
+    label, lat, lng = data.get("label"), data.get("lat"), data.get("lng")
+    if not label or lat is None or lng is None:
+        return jsonify({"error": "label, lat, and lng are required"}), 400
+    try:
+        lat, lng = float(lat), float(lng)
+    except (TypeError, ValueError):
+        return jsonify({"error": "lat and lng must be numbers"}), 400
+    update_device_location(label, lat, lng)
+    return jsonify(get_device_location())
+
+
+# ----------------- MESSAGE PACKETS -----------------
+# Real screenshot (when one was captured) + real recipients (Resident
+# accounts) + a real, admin-set location. No dedicated packets table --
+# assembled on the fly from `alerts` + screenshot files on disk.
+# Human-reported alerts (alert_type='peer-reported', see /peer_reports below)
+# have no camera screenshot, so screenshot_url is null for those rather than
+# excluding them entirely -- they still need to flow through Take-a-Look /
+# Notify-Community like any other alert.
+
+def _row_to_packet(a, recipients, location):
+    has_screenshot = (SCREENSHOT_DIR / f"alert_{a['id']}.jpg").exists()
+    return {
+        "id": a["id"],
+        "alert_type": a["alert_type"],
+        "confidence": a["confidence"],
+        "timestamp": a["timestamp"],
+        "operator_username": a["operator_username"],
+        "is_false_alarm": bool(a["is_false_alarm"]),
+        "screenshot_url": f"/api/message_packets/{a['id']}/screenshot" if has_screenshot else None,
+        "location": location,
+        "recipients": recipients,
+    }
+
+
+@api_bp.route("/message_packets")
+@token_required
+def api_message_packets():
+    limit = request.args.get("limit", type=int) or 20
+
+    with sqlite3.connect(DATABASE) as conn:
+        conn.row_factory = sqlite3.Row
+        alerts = conn.execute(
+            "SELECT * FROM alerts ORDER BY timestamp DESC LIMIT ?", (limit,)
+        ).fetchall()
+
+    recipients = [_row_to_community_member(m) for m in get_community_members()]
+    location = get_device_location()
+
+    packets = [_row_to_packet(a, recipients, location) for a in alerts]
+
+    return jsonify({"message_packets": packets})
+
+
+@api_bp.route("/message_packets/<int:alert_id>/screenshot")
+@token_required
+def api_message_packet_screenshot(alert_id):
+    path = SCREENSHOT_DIR / f"alert_{alert_id}.jpg"
+    if not path.exists():
+        return jsonify({"error": "No screenshot for this alert"}), 404
+    return send_file(path, mimetype="image/jpeg")
+
+
+@api_bp.route("/message_packets/<int:alert_id>/send", methods=["POST"])
+@token_required
+def api_send_message_packet(alert_id):
+    if not send_community_alert:
+        return jsonify({"error": "Email sending is not available on this server."}), 503
+
+    with sqlite3.connect(DATABASE) as conn:
+        conn.row_factory = sqlite3.Row
+        alert = conn.execute("SELECT * FROM alerts WHERE id=?", (alert_id,)).fetchone()
+
+    if not alert:
+        return jsonify({"error": "Alert not found."}), 404
+
+    screenshot_path = SCREENSHOT_DIR / f"alert_{alert_id}.jpg"
+    screenshot_path = str(screenshot_path) if screenshot_path.exists() else None
+
+    recipients = [_row_to_community_member(m) for m in get_community_members()]
+    if not recipients:
+        return jsonify({"error": "No community members to send to."}), 400
+
+    sent, failed = send_community_alert(
+        alert_id=alert["id"],
+        alert_type=alert["alert_type"],
+        message=alert["alert_type"].replace("-", " ").capitalize(),
+        confidence=alert["confidence"],
+        timestamp=alert["timestamp"],
+        screenshot_path=screenshot_path,
+        location=get_device_location(),
+        recipients=recipients,
+        reported_by=alert["operator_username"],
+    )
+    return jsonify({"message": f"Sent to {sent} community member(s).", "sent": sent, "failed": failed})
+
+
+# ----------------- PEER REPORTS (resident-to-resident suspicious activity) -----------------
+
+def _row_to_peer_report(row):
+    return {
+        "id": row["id"],
+        "reporter_user_id": row["reporter_user_id"],
+        "reporter_username": row["reporter_username"],
+        "owner_user_id": row["owner_user_id"],
+        "message": row["message"],
+        "status": row["status"],
+        "timestamp": row["timestamp"],
+    }
+
+
+def _current_user_id():
+    with sqlite3.connect(DATABASE) as conn:
+        row = conn.execute("SELECT id FROM users WHERE username=?", (request.jwt_user["sub"],)).fetchone()
+    return row[0] if row else None
+
+
+@api_bp.route("/peer_reports", methods=["POST"])
+@token_required
+def api_create_peer_report():
+    data = request.get_json(silent=True) or {}
+    owner_user_id = data.get("owner_user_id")
+    if not owner_user_id:
+        return jsonify({"error": "owner_user_id is required"}), 400
+
+    reporter_id = _current_user_id()
+    if reporter_id is None:
+        return jsonify({"error": "Could not resolve current user."}), 400
+    if reporter_id == owner_user_id:
+        return jsonify({"error": "You cannot report your own camera."}), 400
+
+    report_id = create_peer_report(reporter_id, owner_user_id, data.get("message"))
+    return jsonify({"message": "Report sent to the house owner.", "id": report_id}), 201
+
+
+@api_bp.route("/peer_reports")
+@token_required
+def api_list_peer_reports():
+    if request.args.get("for_me") != "true":
+        return jsonify({"error": "Only ?for_me=true is supported."}), 400
+    owner_id = _current_user_id()
+    if owner_id is None:
+        return jsonify({"error": "Could not resolve current user."}), 400
+    reports = get_pending_reports_for(owner_id)
+    return jsonify({"peer_reports": [_row_to_peer_report(r) for r in reports]})
+
+
+@api_bp.route("/peer_reports/<int:report_id>/validate", methods=["POST"])
+@token_required
+def api_validate_peer_report(report_id):
+    report = get_peer_report(report_id)
+    if not report:
+        return jsonify({"error": "Report not found."}), 404
+
+    caller_id = _current_user_id()
+    if caller_id != report["owner_user_id"]:
+        return jsonify({"error": "Only the house owner can validate this report."}), 403
+
+    data = request.get_json(silent=True) or {}
+    confirmed = bool(data.get("confirmed"))
+
+    status = resolve_peer_report(report_id, confirmed)
+    if status == "not_found":
+        return jsonify({"error": "Report already resolved."}), 409
+
+    if confirmed:
+        # Reuses the existing ML-alert pipeline instead of a parallel one --
+        # this alert now shows up in Dashboard/History/Take-a-Look exactly
+        # like a model-detected one, and "Notify Community" works unchanged.
+        log_alert("peer-reported", 1.0, report["owner_username"])
+
+    return jsonify({"message": "confirmed" if confirmed else "dismissed"})

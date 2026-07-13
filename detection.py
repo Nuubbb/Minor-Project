@@ -10,6 +10,7 @@ from database import log_alert
 from database import get_active_event
 from violence_detector import ViolenceDetector          # YOUR temporal violence model
 from context_engine import ThreatAssessor, IGNORE, LOG, NOTIFY, ALARM   # YOUR context engine
+from config import SCREENSHOT_DIR
 try:
     from email_alert import send_email_alert          # emails the logged-in operator
 except Exception:
@@ -17,7 +18,7 @@ except Exception:
 
 # ----------------- DETECTION SETUP (loaded once) -----------------
 general_model = YOLO("yolov8n.pt")                                    # person detection (nano = faster)
-weapon_model = YOLO("best.pt")                                        # gun/knife detection
+weapon_model = YOLO("weapon_dectect.pt")                              # gun/knife detection
 violence_detector = ViolenceDetector("violence_mobilenet_lstm.pt")   # temporal violence model
 assessor = ThreatAssessor()                                          # context-aware decision engine
 
@@ -42,6 +43,14 @@ def trigger_audio_alarm():
             print('\a') # Triggers terminal bell
     except Exception as e:
         print(f"[audio] skip: {e}")
+
+
+def _save_alert_screenshot(alert_id, img):
+    """Persist the annotated frame for a just-logged alert (message-packets prototype)."""
+    try:
+        cv2.imwrite(str(SCREENSHOT_DIR / f"alert_{alert_id}.jpg"), img)
+    except Exception as e:
+        print("[screenshot] skip:", e)
 
 
 def _should_act(alert_type):
@@ -136,13 +145,16 @@ def generate_frames(operator_email=None, source=None, operator_username="system"
         while True:
             success, frame = camera.read()
             if not success:
-                if source:  # VIDEO FILE -> loop back to the start
+                if source and source != 'cctv':  # VIDEO FILE -> loop back to the start
                     camera.set(cv2.CAP_PROP_POS_FRAMES, 0)
                     fail_count += 1
                     if fail_count > 5:
                         break
                     continue
-                # CCTV/Network drop handling: wait a fraction of a second and try again
+                # Webcam or CCTV: network/device drops are expected -- retry
+                # indefinitely rather than giving up after a handful of
+                # failures (an RTSP stream can drop out for a few seconds
+                # and recover on its own).
                 time.sleep(0.1)
                 continue
 
@@ -175,6 +187,7 @@ def generate_frames(operator_email=None, source=None, operator_username="system"
                 if _should_act(alert_type):
                     # Pass the logged-in operator's username to the database logger
                     new_id = log_alert(alert_type, conf, operator_username)
+                    _save_alert_screenshot(new_id, img)
 
                     if tier == ALARM:
                         trigger_audio_alarm()

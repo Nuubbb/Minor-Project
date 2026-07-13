@@ -1,4 +1,4 @@
-export type Role = "Admin" | "Operator";
+export type Role = "Admin" | "Operator" | "Resident";
 
 export interface AuthUser {
   token: string;
@@ -30,4 +30,41 @@ export interface UserItem {
   username: string;
   email: string | null;
   role: Role;
+}
+
+export interface CommunityMember {
+  id: number;
+  name: string;
+  email: string;
+  phone: string | null;
+  lat: number | null;
+  lng: number | null;
+}
+
+export interface DeviceLocation {
+  label: string;
+  lat: number;
+  lng: number;
+}
+
+export interface MessagePacket {
+  id: number;
+  alert_type: string;
+  confidence: number;
+  timestamp: string;
+  operator_username: string;
+  is_false_alarm: boolean;
+  screenshot_url: string | null;
+  location: DeviceLocation;
+  recipients: CommunityMember[];
+}
+
+export interface PeerReport {
+  id: number;
+  reporter_user_id: number;
+  reporter_username: string;
+  owner_user_id: number;
+  message: string | null;
+  status: "pending" | "confirmed" | "dismissed";
+  timestamp: string;
 }

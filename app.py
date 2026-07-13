@@ -1,11 +1,12 @@
 import sqlite3
 from datetime import datetime
-from flask import Flask, render_template, request, redirect, url_for, session, Response, flash, render_template_string
+from flask import Flask, render_template, request, redirect, url_for, session, Response, flash, render_template_string, send_file
 from werkzeug.security import generate_password_hash, check_password_hash
 
-from config import SECRET_KEY
+from config import SECRET_KEY, SCREENSHOT_DIR
 from database import (init_db, mark_false_alarm, DATABASE,
-                      init_events, add_event, delete_user, delete_event)
+                      init_events, add_event, delete_user, delete_event,
+                      get_device_location)
 from detection import generate_frames
 from api import api_bp
 
@@ -294,6 +295,40 @@ def add_event_route():
               request.form['expected_crowd'])
     flash("Event scheduled.", "success")
     return redirect(url_for('events'))
+
+
+@app.route('/message_packets_view')
+def message_packets_view():
+    """Dummy/dev-only page to eyeball the message-packet prototype (screenshot +
+    placeholder location + recipients) before the real screenshot/map UI is ready."""
+    if 'username' not in session:
+        return redirect(url_for('index'))
+
+    with sqlite3.connect(DATABASE) as conn:
+        conn.row_factory = sqlite3.Row
+        alerts = conn.execute("SELECT * FROM alerts ORDER BY timestamp DESC LIMIT 20").fetchall()
+        recipients = [dict(u) for u in conn.execute(
+            "SELECT username, email FROM users WHERE email IS NOT NULL AND email != ''"
+        ).fetchall()]
+
+    packets = []
+    for a in alerts:
+        if not (SCREENSHOT_DIR / f"alert_{a['id']}.jpg").exists():
+            continue
+        packets.append({**dict(a), "recipients": recipients})
+
+    return render_template('message_packets.html', username=session['username'],
+                            role=session['role'], packets=packets, location=get_device_location())
+
+
+@app.route('/screenshots/<int:alert_id>')
+def screenshot_view(alert_id):
+    if 'username' not in session:
+        return "Unauthorized", 401
+    path = SCREENSHOT_DIR / f"alert_{alert_id}.jpg"
+    if not path.exists():
+        return "Not found", 404
+    return send_file(path, mimetype='image/jpeg')
 
 
 @app.route('/logout')

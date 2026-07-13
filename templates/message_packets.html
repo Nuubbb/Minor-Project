@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <title>Message Packets</title>
+</head>
+<body>
+    <nav style="position: relative;">
+        <div><strong>SURVEILLANCE DESK</strong></div>
+
+        <div style="position: absolute; left: 50%; transform: translateX(-50%); text-transform: uppercase;">
+            <strong>USER: {{ username }}</strong>
+        </div>
+
+        <div>
+            <a href="{{ url_for('dashboard') }}">Dashboard</a>
+            <a href="{{ url_for('alerts_history') }}">Alerts History</a>
+            <a href="{{ url_for('message_packets_view') }}">Message Packets</a>
+            {% if role|lower == 'admin' %}<a href="{{ url_for('users') }}">Manage Users</a>{% endif %}
+            {% if role|lower == 'admin' %}<a href="{{ url_for('events') }}">Events</a>{% endif %}
+            <a href="{{ url_for('logout') }}" style="color: #f87171;">Logout</a>
+        </div>
+    </nav>
+
+    <div class="container">
+        <p style="color: #64748b; margin-bottom: 20px;">
+            Prototype view — screenshot is real (captured when the alert fired),
+            location is a placeholder until GPS is integrated, recipients are
+            pulled from the users table. Not the final UI.
+        </p>
+
+        {% if not packets %}
+        <div class="card">
+            <p style="text-align: center; color: #64748b; padding: 20px;">
+                No message packets yet — trigger a real alert (or one with a
+                captured screenshot) to see one here.
+            </p>
+        </div>
+        {% endif %}
+
+        <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 20px;">
+            {% for p in packets %}
+            <div class="card">
+                <img src="{{ url_for('screenshot_view', alert_id=p.id) }}"
+                     style="width: 100%; border-radius: 6px; display: block; margin-bottom: 12px;">
+
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                    <strong style="text-transform: capitalize;">{{ p.alert_type.replace('-', ' ') }}</strong>
+                    {% if p.is_false_alarm %}
+                        <span style="color: #64748b; font-weight: bold; font-size: 0.8rem;">Dismissed</span>
+                    {% else %}
+                        <span style="color: #dc2626; font-weight: bold; font-size: 0.8rem;">Active</span>
+                    {% endif %}
+                </div>
+
+                <p style="margin: 4px 0; font-size: 0.9rem; color: #475569;">
+                    {{ (p.confidence * 100)|round(0, 'floor')|int }}% confidence · {{ p.timestamp }}<br>
+                    reported by {{ p.operator_username }}
+                </p>
+
+                <p style="margin: 10px 0 4px 0; font-size: 0.85rem;">
+                    <strong>Location:</strong> {{ location.label }}
+                    <span style="color: #94a3b8;">({{ location.lat }}, {{ location.lng }})</span>
+                </p>
+
+                <p style="margin: 4px 0; font-size: 0.85rem;">
+                    <strong>Recipients ({{ p.recipients|length }}):</strong>
+                    {{ p.recipients|map(attribute='username')|join(', ') }}
+                </p>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</body>
+</html>
