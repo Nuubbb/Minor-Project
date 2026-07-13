@@ -1,4 +1,13 @@
 venv/
 __pycache__/
+*.pyc
 *.mp4
 airtlab/
+
+# mobile (Expo/React Native) - node_modules and .expo are also covered by
+# mobile/.gitignore, listed here too as a defensive backstop
+node_modules/
+.expo/
+.env
+.env.local
+.DS_Store
