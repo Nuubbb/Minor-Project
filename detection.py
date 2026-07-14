@@ -17,9 +17,11 @@ except Exception:
     send_email_alert = None
 
 # ----------------- DETECTION SETUP (loaded once) -----------------
+VIOLENCE_DETECTION_ENABLED = False   # feature flag: violence model disabled; flip to True to re-enable
+
 general_model = YOLO("yolov8n.pt")                                    # person detection (nano = faster)
 weapon_model = YOLO("weapon_dectect.pt")                              # gun/knife detection
-violence_detector = ViolenceDetector("violence_mobilenet_lstm.pt")   # temporal violence model
+violence_detector = ViolenceDetector("violence_mobilenet_lstm.pt") if VIOLENCE_DETECTION_ENABLED else None
 assessor = ThreatAssessor()                                          # context-aware decision engine
 
 WEAPON_KEYWORDS = ("gun", "knife", "knive", "pistol", "rifle", "handgun", "shotgun", "weapon", "blade")
@@ -133,7 +135,8 @@ def generate_frames(operator_email=None, source=None, operator_username="system"
     else:
         camera = cv2.VideoCapture(0)
 
-    violence_detector.buffer.clear(); violence_detector.prob_hist.clear(); violence_detector._count = 0
+    if VIOLENCE_DETECTION_ENABLED:
+        violence_detector.buffer.clear(); violence_detector.prob_hist.clear(); violence_detector._count = 0
     fail_count = 0
     DETECT_EVERY = 15  # Optimized person detection frequency
     WEAPON_EVERY = 10  # Optimized weapon detection frequency
@@ -161,7 +164,10 @@ def generate_frames(operator_email=None, source=None, operator_username="system"
             fail_count = 0
             frame = cv2.resize(frame, (640, 480))
 
-            is_violent, violence_prob = violence_detector.update(frame)
+            if VIOLENCE_DETECTION_ENABLED:
+                is_violent, violence_prob = violence_detector.update(frame)
+            else:
+                is_violent, violence_prob = False, 0.0
 
             frame_no += 1
             if frame_no % DETECT_EVERY == 0:
@@ -198,9 +204,10 @@ def generate_frames(operator_email=None, source=None, operator_username="system"
                                          args=(operator_email, message, new_id),
                                          daemon=True).start()  # non-blocking
 
-            cv2.putText(img, f"Violence: {violence_prob:.2f}", (20, 90),
-                        cv2.FONT_HERSHEY_SIMPLEX, 0.7,
-                        (0, 0, 255) if is_violent else (0, 255, 0), 2)
+            if VIOLENCE_DETECTION_ENABLED:
+                cv2.putText(img, f"Violence: {violence_prob:.2f}", (20, 90),
+                            cv2.FONT_HERSHEY_SIMPLEX, 0.7,
+                            (0, 0, 255) if is_violent else (0, 255, 0), 2)
 
             ret, buffer = cv2.imencode('.jpg', img, [cv2.IMWRITE_JPEG_QUALITY, 70])
             yield (b'--frame\r\n' b'Content-Type: image/jpeg\r\n\r\n' + buffer.tobytes() + b'\r\n')
