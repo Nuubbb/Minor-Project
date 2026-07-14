@@ -1,16 +1,31 @@
+"""api"""
+
 import sqlite3
 from flask import Blueprint, request, jsonify, Response, send_file
 from werkzeug.security import generate_password_hash, check_password_hash
 
-from database import (DATABASE, mark_false_alarm, get_all_events, add_event,
-                       delete_user, delete_event, get_community_members,
-                       add_community_member, delete_community_member,
-                       get_device_location, update_device_location,
-                       log_alert, create_peer_report, get_pending_reports_for,
-                       get_peer_report, resolve_peer_report)
+from database import (
+    DATABASE,
+    mark_false_alarm,
+    get_all_events,
+    add_event,
+    delete_user,
+    delete_event,
+    get_community_members,
+    add_community_member,
+    delete_community_member,
+    get_device_location,
+    update_device_location,
+    log_alert,
+    create_peer_report,
+    get_pending_reports_for,
+    get_peer_report,
+    resolve_peer_report,
+)
 from auth import issue_token, token_required, admin_required
 from detection import generate_frames
 from config import SCREENSHOT_DIR
+
 try:
     from email_alert import send_community_alert
 except Exception:
@@ -42,7 +57,12 @@ def _row_to_event(row):
 
 
 def _row_to_user(row):
-    return {"id": row["id"], "username": row["username"], "email": row["email"], "role": row["role"]}
+    return {
+        "id": row["id"],
+        "username": row["username"],
+        "email": row["email"],
+        "role": row["role"],
+    }
 
 
 def _row_to_community_member(row):
@@ -57,6 +77,7 @@ def _row_to_community_member(row):
 
 
 # ----------------- AUTH -----------------
+
 
 @api_bp.route("/login/<role_type>", methods=["POST"])
 def api_login(role_type):
@@ -73,17 +94,33 @@ def api_login(role_type):
     with sqlite3.connect(DATABASE) as conn:
         conn.row_factory = sqlite3.Row
         cursor = conn.cursor()
-        cursor.execute("SELECT * FROM users WHERE username=? OR email=?", (login_id, login_id))
+        cursor.execute(
+            "SELECT * FROM users WHERE username=? OR email=?", (login_id, login_id)
+        )
         user = cursor.fetchone()
 
     if not user or not check_password_hash(user["password"], password):
         return jsonify({"error": "Invalid username/email or password."}), 401
 
     if user["role"].lower() != role_type.lower():
-        return jsonify({"error": f"Access Denied: This account does not have {role_type} privileges."}), 403
+        return (
+            jsonify(
+                {
+                    "error": f"Access Denied: This account does not have {role_type} privileges."
+                }
+            ),
+            403,
+        )
 
     token = issue_token(user)
-    return jsonify({"token": token, "username": user["username"], "role": user["role"], "email": user["email"]})
+    return jsonify(
+        {
+            "token": token,
+            "username": user["username"],
+            "role": user["role"],
+            "email": user["email"],
+        }
+    )
 
 
 @api_bp.route("/signup", methods=["POST"])
@@ -104,7 +141,7 @@ def api_signup():
         hashed_pw = generate_password_hash(password)
         cursor.execute(
             "INSERT INTO users (username, password, email, role) VALUES (?, ?, ?, 'Operator')",
-            (username, hashed_pw, email)
+            (username, hashed_pw, email),
         )
         conn.commit()
 
@@ -126,6 +163,7 @@ def api_logout():
 
 # ----------------- ALERTS -----------------
 
+
 @api_bp.route("/alerts")
 @token_required
 def api_alerts():
@@ -139,7 +177,9 @@ def api_alerts():
             query = "SELECT * FROM alerts ORDER BY timestamp DESC"
             params = ()
         else:
-            query = "SELECT * FROM alerts WHERE operator_username=? ORDER BY timestamp DESC"
+            query = (
+                "SELECT * FROM alerts WHERE operator_username=? ORDER BY timestamp DESC"
+            )
             params = (u["sub"],)
         if limit:
             query += " LIMIT ?"
@@ -175,16 +215,21 @@ def api_video_feed():
     operator_email = None
     with sqlite3.connect(DATABASE) as conn:
         conn.row_factory = sqlite3.Row
-        row = conn.execute("SELECT email FROM users WHERE username=?", (u["sub"],)).fetchone()
+        row = conn.execute(
+            "SELECT email FROM users WHERE username=?", (u["sub"],)
+        ).fetchone()
         if row:
             operator_email = row["email"]
 
     video = request.args.get("video") or None
-    return Response(generate_frames(operator_email, source=video, operator_username=u["sub"]),
-                     mimetype="multipart/x-mixed-replace; boundary=frame")
+    return Response(
+        generate_frames(operator_email, source=video, operator_username=u["sub"]),
+        mimetype="multipart/x-mixed-replace; boundary=frame",
+    )
 
 
 # ----------------- EVENTS (admin only) -----------------
+
 
 @api_bp.route("/events")
 @token_required
@@ -203,7 +248,13 @@ def api_add_event():
     if not all(k in data for k in required):
         return jsonify({"error": f"Required fields: {', '.join(required)}"}), 400
 
-    add_event(data["event_date"], data["name"], data["start_hour"], data["end_hour"], data["expected_crowd"])
+    add_event(
+        data["event_date"],
+        data["name"],
+        data["start_hour"],
+        data["end_hour"],
+        data["expected_crowd"],
+    )
     return jsonify({"message": "Event scheduled."}), 201
 
 
@@ -218,6 +269,7 @@ def api_delete_event(event_id):
 
 
 # ----------------- USERS (admin only) -----------------
+
 
 @api_bp.route("/users")
 @token_required
@@ -239,16 +291,22 @@ def api_delete_user(user_id):
     if status == "not_found":
         return jsonify({"error": "User not found."}), 404
     if status == "self":
-        return jsonify({"error": "You cannot delete your own active admin account."}), 400
+        return (
+            jsonify({"error": "You cannot delete your own active admin account."}),
+            400,
+        )
     return jsonify({"message": "User successfully removed and archived."})
 
 
 # ----------------- COMMUNITY (Resident accounts) -----------------
 
+
 @api_bp.route("/community")
 @token_required
 def api_community():
-    return jsonify({"community": [_row_to_community_member(m) for m in get_community_members()]})
+    return jsonify(
+        {"community": [_row_to_community_member(m) for m in get_community_members()]}
+    )
 
 
 @api_bp.route("/community", methods=["POST"])
@@ -261,11 +319,16 @@ def api_add_community_member():
     username, password = add_community_member(
         data["name"], data["email"], data.get("phone"), data.get("lat"), data.get("lng")
     )
-    return jsonify({
-        "message": "Resident account created.",
-        "username": username,
-        "password": password,
-    }), 201
+    return (
+        jsonify(
+            {
+                "message": "Resident account created.",
+                "username": username,
+                "password": password,
+            }
+        ),
+        201,
+    )
 
 
 @api_bp.route("/community/<int:member_id>", methods=["DELETE"])
@@ -279,6 +342,7 @@ def api_delete_community_member(member_id):
 
 
 # ----------------- DEVICE LOCATION -----------------
+
 
 @api_bp.route("/device_location")
 @token_required
@@ -311,6 +375,7 @@ def api_update_device_location():
 # excluding them entirely -- they still need to flow through Take-a-Look /
 # Notify-Community like any other alert.
 
+
 def _row_to_packet(a, recipients, location):
     has_screenshot = (SCREENSHOT_DIR / f"alert_{a['id']}.jpg").exists()
     return {
@@ -320,7 +385,9 @@ def _row_to_packet(a, recipients, location):
         "timestamp": a["timestamp"],
         "operator_username": a["operator_username"],
         "is_false_alarm": bool(a["is_false_alarm"]),
-        "screenshot_url": f"/api/message_packets/{a['id']}/screenshot" if has_screenshot else None,
+        "screenshot_url": (
+            f"/api/message_packets/{a['id']}/screenshot" if has_screenshot else None
+        ),
         "location": location,
         "recipients": recipients,
     }
@@ -385,10 +452,17 @@ def api_send_message_packet(alert_id):
         recipients=recipients,
         reported_by=alert["operator_username"],
     )
-    return jsonify({"message": f"Sent to {sent} community member(s).", "sent": sent, "failed": failed})
+    return jsonify(
+        {
+            "message": f"Sent to {sent} community member(s).",
+            "sent": sent,
+            "failed": failed,
+        }
+    )
 
 
 # ----------------- PEER REPORTS (resident-to-resident suspicious activity) -----------------
+
 
 def _row_to_peer_report(row):
     return {
@@ -404,7 +478,9 @@ def _row_to_peer_report(row):
 
 def _current_user_id():
     with sqlite3.connect(DATABASE) as conn:
-        row = conn.execute("SELECT id FROM users WHERE username=?", (request.jwt_user["sub"],)).fetchone()
+        row = conn.execute(
+            "SELECT id FROM users WHERE username=?", (request.jwt_user["sub"],)
+        ).fetchone()
     return row[0] if row else None
 
 
