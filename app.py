@@ -103,8 +103,29 @@ def dashboard():
         cursor.execute("SELECT * FROM alerts WHERE timestamp >= ? ORDER BY timestamp DESC", (login_time,))
         alerts = cursor.fetchall()
 
-    return render_template('dashboard.html', username=session['username'], role=session['role'], alerts=alerts, run_live=run_live)
+        # NEW: threat type counts for charts
+        cursor.execute("""
+            SELECT alert_type, COUNT(*) as cnt, 
+                   SUM(CASE WHEN is_false_alarm = 0 THEN 1 ELSE 0 END) as active_cnt
+            FROM alerts 
+            GROUP BY alert_type
+        """)
+        threat_stats = [dict(row) for row in cursor.fetchall()]
 
+        # NEW: alerts per day for line chart (last 7 days)
+        cursor.execute("""
+            SELECT DATE(timestamp) as day, COUNT(*) as cnt
+            FROM alerts
+            GROUP BY DATE(timestamp)
+            ORDER BY day DESC
+            LIMIT 7
+        """)
+        daily_stats = [dict(row) for row in cursor.fetchall()]
+        daily_stats.reverse()
+
+    return render_template('dashboard.html', username=session['username'], 
+                          role=session['role'], alerts=alerts, run_live=run_live,
+                          threat_stats=threat_stats, daily_stats=daily_stats)
 @app.route('/video_feed')
 def video_feed():
     if 'username' not in session:
@@ -134,29 +155,61 @@ def get_alerts():
         cursor.execute("SELECT * FROM alerts WHERE timestamp >= ? ORDER BY timestamp DESC", (login_time,))
         alerts = cursor.fetchall()
     row_template = """
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
     {% for alert in alerts %}
-    <tr class="{% if alert.is_false_alarm %}false-alarm-row{% else %}alert-row{% endif %}">
-        <td style="font-size: 0.8rem; color: #64748b;">{{ alert.timestamp.split()[1] if alert.timestamp else '' }}</td>
-        <td style="font-weight: bold; text-transform: capitalize;">{{ alert.alert_type.replace('-', ' ') }}</td>
-        <td style="font-size: 0.85rem;">{{ "%.0f"|format(alert.confidence * 100) }}%</td>
+    <tr>
+        <td style="color:#94a3b8; font-size:0.75rem; white-space:nowrap;">
+            {{ alert.timestamp.split()[1] if alert.timestamp else '' }}
+        </td>
+        <td>
+            {% set atype = alert.alert_type|lower %}
+            <span class="alert-type-badge {% if 'violen' in atype %}violence{% elif 'weapon' in atype or 'gun' in atype or 'knife' in atype %}weapon{% elif 'crowd' in atype %}crowd{% elif 'intrusion' in atype %}intrusion{% else %}default{% endif %}"
+                  style="display:inline-flex; align-items:center; gap:6px; padding:4px 10px; border-radius:6px; font-weight:600; font-size:0.75rem; text-transform:capitalize;
+                  {% if 'violen' in atype %}background:rgba(220,38,38,0.1); color:#dc2626;
+                  {% elif 'weapon' in atype or 'gun' in atype or 'knife' in atype %}background:rgba(245,158,11,0.1); color:#d97706;
+                  {% elif 'crowd' in atype %}background:rgba(14,165,233,0.1); color:#0284c7;
+                  {% elif 'intrusion' in atype %}background:rgba(124,58,237,0.1); color:#7c3aed;
+                  {% else %}background:#f1f5f9; color:#475569;{% endif %}">
+                <i class="fas {% if 'violen' in atype %}fa-hand-fist{% elif 'weapon' in atype or 'gun' in atype or 'knife' in atype %}fa-crosshairs{% elif 'crowd' in atype %}fa-people-group{% elif 'intrusion' in atype %}fa-person-walking{% else %}fa-triangle-exclamation{% endif %}"></i>
+                {{ alert.alert_type.replace('-', ' ') }}
+            </span>
+        </td>
+        <td>
+            {% set conf = (alert.confidence * 100)|int %}
+            <div style="display:flex; align-items:center; gap:6px;">
+                <span style="font-size:0.78rem; font-weight:600; min-width:32px;">{{ conf }}%</span>
+                <div style="flex:1; height:4px; background:#e2e8f0; border-radius:2px; overflow:hidden;">
+                    <div style="height:100%; border-radius:2px; width:{{ conf }}%;
+                        {% if conf >= 80 %}background:#dc2626;{% elif conf >= 50 %}background:#f59e0b;{% else %}background:#16a34a;{% endif %}
+                        transition:width 0.8s ease;"></div>
+                </div>
+            </div>
+        </td>
         <td>
             {% if alert.is_false_alarm %}
-                <span style="color: #64748b; font-weight: bold; font-size: 0.85rem;">Dismissed</span>
+                <span class="status-dismissed" style="color:#94a3b8; font-weight:600; font-size:0.78rem;"><i class="fas fa-check"></i> Dismissed</span>
             {% else %}
-                <span style="color: #dc2626; font-weight: bold; font-size: 0.85rem;">Active</span>
+                <span class="status-active" style="color:#dc2626; font-weight:700; font-size:0.78rem; display:flex; align-items:center; gap:4px;">
+                    <i class="fas fa-circle" style="font-size:0.4rem;"></i> Active
+                </span>
             {% endif %}
         </td>
         <td>
             {% if not alert.is_false_alarm %}
-            <form action="{{ url_for('flag_false_alarm', alert_id=alert.id) }}" method="POST" style="margin: 0;">
-                <button type="submit" class="btn" style="background:#64748b; padding: 4px 8px; font-size: 0.75rem;">Mark False</button>
+            <form action="{{ url_for('flag_false_alarm', alert_id=alert.id) }}" method="POST" style="margin:0;">
+                <button type="submit" style="padding:5px 12px; border-radius:6px; border:1px solid #e2e8f0; background:#f8fafc; color:#475569; font-size:0.72rem; font-weight:600; cursor:pointer;">Dismiss</button>
             </form>
             {% endif %}
         </td>
     </tr>
     {% else %}
     <tr>
-        <td colspan="5" style="color: #64748b; text-align: center; padding: 30px;">No active security events logged.</td>
+        <td colspan="5">
+            <div style="text-align:center; padding:50px 20px; color:#94a3b8;">
+                <i class="fas fa-shield-check" style="font-size:2.5rem; opacity:0.3; margin-bottom:12px; display:block;"></i>
+                <p>No security events detected</p>
+            </div>
+        </td>
     </tr>
     {% endfor %}
     """

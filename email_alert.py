@@ -15,8 +15,7 @@ SYSTEM_NAME = "Surveillance System"       # shows as the sender NAME (not your r
 
 # where your Flask app is reachable. Use your LAN IP (e.g. http://192.168.1.5:5000)
 # if you want to click the button from a PHONE on the same wifi.
-BASE_URL = "http://192.168.18.6"
-DISMISS_SECRET = "kec_surveillance_2026"  # MUST match the value in app.py
+BASE_URL = "http://192.168.18.4:5001"DISMISS_SECRET = "kec_surveillance_2026"  # MUST match the value in app.py
 
 
 def send_email_alert(to_email, message, alert_id):

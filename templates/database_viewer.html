@@ -1,64 +1,762 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
-    <title>Master Database Viewer</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Database Viewer — Surveillance System</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
     <style>
-        body { font-family: Arial, sans-serif; background-color: #f3f4f6; padding: 20px; }
-        .container { max-width: 1000px; margin: auto; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
-        h1 { text-align: center; color: #1f2937; }
-        h2 { color: #2563eb; margin-top: 30px; border-bottom: 2px solid #e5e7eb; padding-bottom: 5px; }
-        table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 14px; }
-        th, td { padding: 10px; border: 1px solid #e5e7eb; text-align: left; }
-        th { background-color: #f8fafc; color: #475569; }
-        tr:nth-child(even) { background-color: #f8fafc; }
+        *,
+        *::before,
+        *::after {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+         :root {
+            --bg-primary: #f4f6f9;
+            --bg-card: #ffffff;
+            --accent: #2563eb;
+            --accent-glow: rgba(37, 99, 235, 0.12);
+            --danger: #dc2626;
+            --danger-glow: rgba(220, 38, 38, 0.1);
+            --success: #16a34a;
+            --success-glow: rgba(22, 163, 74, 0.1);
+            --warning: #f59e0b;
+            --warning-glow: rgba(245, 158, 11, 0.1);
+            --info: #0ea5e9;
+            --info-glow: rgba(14, 165, 233, 0.1);
+            --purple: #7c3aed;
+            --purple-glow: rgba(124, 58, 237, 0.1);
+            --text-primary: #1e293b;
+            --text-secondary: #475569;
+            --text-muted: #94a3b8;
+            --border: #e2e8f0;
+            --radius: 12px;
+            --transition: 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.06);
+            --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.08);
+        }
+        
+        body {
+            font-family: 'Inter', -apple-system, sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+        }
+        
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        .animate-in {
+            animation: fadeInUp 0.6s ease-out forwards;
+            opacity: 0;
+        }
+        
+        .animate-in:nth-child(1) {
+            animation-delay: 0.05s;
+        }
+        
+        .animate-in:nth-child(2) {
+            animation-delay: 0.1s;
+        }
+        
+        .animate-in:nth-child(3) {
+            animation-delay: 0.15s;
+        }
+        
+        .animate-in:nth-child(4) {
+            animation-delay: 0.2s;
+        }
+        
+        .animate-in:nth-child(5) {
+            animation-delay: 0.25s;
+        }
+        /* === TOPBAR === */
+        
+        .topbar {
+            padding: 20px 32px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            border-bottom: 1px solid var(--border);
+            background: rgba(255, 255, 255, 0.85);
+            backdrop-filter: blur(20px);
+            position: sticky;
+            top: 0;
+            z-index: 50;
+        }
+        
+        .topbar-left {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+        }
+        
+        .topbar-icon {
+            width: 42px;
+            height: 42px;
+            background: linear-gradient(135deg, var(--accent), #1d4ed8);
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+            color: white;
+            box-shadow: 0 4px 15px rgba(37, 99, 235, 0.25);
+        }
+        
+        .topbar-left h1 {
+            font-size: 1.3rem;
+            font-weight: 800;
+            letter-spacing: 1px;
+        }
+        
+        .topbar-left p {
+            font-size: 0.78rem;
+            color: var(--text-muted);
+            margin-top: 1px;
+        }
+        
+        .topbar-right {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        
+        .back-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 9px 18px;
+            border-radius: 8px;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            color: var(--text-secondary);
+            font-size: 0.82rem;
+            font-weight: 600;
+            text-decoration: none;
+            transition: var(--transition);
+        }
+        
+        .back-btn:hover {
+            border-color: #cbd5e1;
+            background: #f8fafc;
+            color: var(--text-primary);
+        }
+        
+        .back-btn i {
+            font-size: 0.75rem;
+        }
+        
+        .dev-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            padding: 5px 12px;
+            border-radius: 20px;
+            background: var(--warning-glow);
+            border: 1px solid rgba(245, 158, 11, 0.2);
+            font-size: 0.72rem;
+            font-weight: 700;
+            color: #d97706;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        /* === CONTENT === */
+        
+        .page-content {
+            max-width: 1100px;
+            margin: 0 auto;
+            padding: 28px 32px;
+        }
+        /* === STATS === */
+        
+        .stats-row {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 16px;
+            margin-bottom: 28px;
+        }
+        
+        .stat-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 18px;
+            box-shadow: var(--shadow-sm);
+            transition: var(--transition);
+            position: relative;
+            overflow: hidden;
+            text-align: center;
+        }
+        
+        .stat-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 3px;
+            border-radius: var(--radius) var(--radius) 0 0;
+        }
+        
+        .stat-card:nth-child(1)::before {
+            background: linear-gradient(90deg, var(--accent), #3b82f6);
+        }
+        
+        .stat-card:nth-child(2)::before {
+            background: linear-gradient(90deg, var(--danger), #f87171);
+        }
+        
+        .stat-card:nth-child(3)::before {
+            background: linear-gradient(90deg, var(--warning), #fbbf24);
+        }
+        
+        .stat-card:nth-child(4)::before {
+            background: linear-gradient(90deg, var(--text-muted), #cbd5e1);
+        }
+        
+        .stat-card:nth-child(5)::before {
+            background: linear-gradient(90deg, var(--purple), #a78bfa);
+        }
+        
+        .stat-card:hover {
+            transform: translateY(-3px);
+            box-shadow: var(--shadow-md);
+        }
+        
+        .stat-card .stat-icon {
+            width: 36px;
+            height: 36px;
+            border-radius: 8px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.9rem;
+            margin-bottom: 10px;
+        }
+        
+        .stat-card:nth-child(1) .stat-icon {
+            background: var(--accent-glow);
+            color: var(--accent);
+        }
+        
+        .stat-card:nth-child(2) .stat-icon {
+            background: var(--danger-glow);
+            color: var(--danger);
+        }
+        
+        .stat-card:nth-child(3) .stat-icon {
+            background: var(--warning-glow);
+            color: var(--warning);
+        }
+        
+        .stat-card:nth-child(4) .stat-icon {
+            background: rgba(148, 163, 184, 0.12);
+            color: var(--text-muted);
+        }
+        
+        .stat-card:nth-child(5) .stat-icon {
+            background: var(--purple-glow);
+            color: var(--purple);
+        }
+        
+        .stat-card .stat-value {
+            font-size: 1.6rem;
+            font-weight: 800;
+            line-height: 1;
+            margin-bottom: 4px;
+        }
+        
+        .stat-card .stat-label {
+            font-size: 0.7rem;
+            color: var(--text-muted);
+            font-weight: 500;
+        }
+        /* === TABLE PANEL === */
+        
+        .panel {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            overflow: hidden;
+            box-shadow: var(--shadow-sm);
+            transition: var(--transition);
+            margin-bottom: 22px;
+        }
+        
+        .panel:hover {
+            box-shadow: var(--shadow-md);
+        }
+        
+        .panel-header {
+            padding: 16px 22px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: #f8fafc;
+        }
+        
+        .panel-header h3 {
+            font-size: 0.95rem;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .panel-header h3 i {
+            font-size: 0.9rem;
+        }
+        
+        .panel-header .count-chip {
+            padding: 3px 10px;
+            border-radius: 20px;
+            font-size: 0.72rem;
+            font-weight: 700;
+            background: #f1f5f9;
+            color: var(--text-muted);
+        }
+        
+        .scroll-area {
+            max-height: 350px;
+            overflow-y: auto;
+            scrollbar-width: thin;
+            scrollbar-color: #cbd5e1 transparent;
+        }
+        
+        .scroll-area::-webkit-scrollbar {
+            width: 5px;
+        }
+        
+        .scroll-area::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        
+        .scroll-area::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 10px;
+        }
+        
+        .data-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        
+        .data-table thead th {
+            padding: 10px 16px;
+            text-align: left;
+            background: #f8fafc;
+            color: var(--text-secondary);
+            font-size: 0.72rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            border-bottom: 2px solid var(--border);
+            position: sticky;
+            top: 0;
+            z-index: 1;
+        }
+        
+        .data-table tbody tr {
+            border-bottom: 1px solid var(--border);
+            transition: var(--transition);
+        }
+        
+        .data-table tbody tr:hover {
+            background: #f8fafc;
+        }
+        
+        .data-table tbody td {
+            padding: 10px 16px;
+            font-size: 0.84rem;
+            vertical-align: middle;
+        }
+        
+        .role-chip {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 3px 10px;
+            border-radius: 20px;
+            font-size: 0.72rem;
+            font-weight: 700;
+            text-transform: uppercase;
+        }
+        
+        .role-chip.admin {
+            background: rgba(30, 41, 59, 0.08);
+            color: #1e293b;
+        }
+        
+        .role-chip.operator {
+            background: var(--accent-glow);
+            color: var(--accent);
+        }
+        
+        .alert-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            padding: 3px 9px;
+            border-radius: 6px;
+            font-weight: 600;
+            font-size: 0.72rem;
+            text-transform: capitalize;
+        }
+        
+        .alert-badge.violence {
+            background: var(--danger-glow);
+            color: var(--danger);
+        }
+        
+        .alert-badge.weapon {
+            background: var(--warning-glow);
+            color: #d97706;
+        }
+        
+        .alert-badge.crowd {
+            background: var(--info-glow);
+            color: #0284c7;
+        }
+        
+        .alert-badge.intrusion {
+            background: var(--purple-glow);
+            color: var(--purple);
+        }
+        
+        .alert-badge.default {
+            background: #f1f5f9;
+            color: var(--text-secondary);
+        }
+        
+        .conf-bar {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        
+        .conf-track {
+            width: 50px;
+            height: 4px;
+            background: #e2e8f0;
+            border-radius: 2px;
+            overflow: hidden;
+        }
+        
+        .conf-fill {
+            height: 100%;
+            border-radius: 2px;
+        }
+        
+        .conf-fill.high {
+            background: var(--danger);
+        }
+        
+        .conf-fill.medium {
+            background: var(--warning);
+        }
+        
+        .conf-fill.low {
+            background: var(--success);
+        }
+        
+        .muted-text {
+            color: var(--text-muted);
+            font-size: 0.82rem;
+        }
+        
+        .archived-row {
+            opacity: 0.7;
+        }
+        
+        .archived-row:hover {
+            opacity: 1;
+        }
+        
+        .empty-row td {
+            text-align: center;
+            padding: 30px 16px;
+            color: var(--text-muted);
+            font-size: 0.85rem;
+        }
+        
+        @media (max-width:1000px) {
+            .stats-row {
+                grid-template-columns: repeat(3, 1fr);
+            }
+        }
+        
+        @media (max-width:600px) {
+            .stats-row {
+                grid-template-columns: 1fr 1fr;
+            }
+            .page-content {
+                padding: 20px 16px;
+            }
+            .topbar {
+                padding: 16px;
+            }
+        }
     </style>
 </head>
+
 <body>
 
-<div class="container">
-    <h1>Master Database System</h1>
+    <!-- TOPBAR -->
+    <header class="topbar">
+        <div class="topbar-left">
+            <div class="topbar-icon"><i class="fas fa-database"></i></div>
+            <div>
+                <h1>Database Viewer</h1>
+                <p>Master database inspection tool</p>
+            </div>
+        </div>
+        <div class="topbar-right">
+            <span class="dev-badge"><i class="fas fa-code"></i> Dev Tool</span>
+            <a href="/" class="back-btn"><i class="fas fa-arrow-left"></i> Back to System</a>
+        </div>
+    </header>
 
-    <h2>1. Active Users</h2>
-    <table>
-        <tr><th>ID</th><th>Username</th><th>Email</th><th>Role</th></tr>
-        {% for user in users %}
-        <tr><td>{{ user.id }}</td><td>{{ user.username }}</td><td>{{ user.email }}</td><td>{{ user.role }}</td></tr>
-        {% endfor %}
-    </table>
+    <div class="page-content">
 
-    <h2>2. Alerts & Incident Logs</h2>
-    <table>
-        <tr><th>ID</th><th>Timestamp</th><th>Alert Type</th><th>Confidence</th><th>Operator</th></tr>
-        {% for alert in alerts %}
-        <tr><td>{{ alert.id }}</td><td>{{ alert.timestamp }}</td><td>{{ alert.alert_type }}</td><td>{{ alert.confidence }}</td><td>{{ alert.operator_username }}</td></tr>
-        {% endfor %}
-    </table>
+        <!-- Stats -->
+        <div class="stats-row">
+            <div class="stat-card animate-in">
+                <div class="stat-icon"><i class="fas fa-users"></i></div>
+                <div class="stat-value">{{ users|length }}</div>
+                <div class="stat-label">Active Users</div>
+            </div>
+            <div class="stat-card animate-in">
+                <div class="stat-icon"><i class="fas fa-bell"></i></div>
+                <div class="stat-value">{{ alerts|length }}</div>
+                <div class="stat-label">Alerts</div>
+            </div>
+            <div class="stat-card animate-in">
+                <div class="stat-icon"><i class="fas fa-calendar"></i></div>
+                <div class="stat-value">{{ events|length }}</div>
+                <div class="stat-label">Events</div>
+            </div>
+            <div class="stat-card animate-in">
+                <div class="stat-icon"><i class="fas fa-user-slash"></i></div>
+                <div class="stat-value">{{ deleted_users|length }}</div>
+                <div class="stat-label">Archived Users</div>
+            </div>
+            <div class="stat-card animate-in">
+                <div class="stat-icon"><i class="fas fa-calendar-xmark"></i></div>
+                <div class="stat-value">{{ deleted_events|length }}</div>
+                <div class="stat-label">Archived Events</div>
+            </div>
+        </div>
 
-    <h2>3. Scheduled Events</h2>
-    <table>
-        <tr><th>ID</th><th>Date</th><th>Name</th><th>Start</th><th>End</th><th>Expected Crowd</th></tr>
-        {% for ev in events %}
-        <tr><td>{{ ev.id }}</td><td>{{ ev.event_date }}</td><td>{{ ev.name }}</td><td>{{ ev.start_hour }}</td><td>{{ ev.end_hour }}</td><td>{{ ev.expected_crowd }}</td></tr>
-        {% endfor %}
-    </table>
+        <!-- 1. Active Users -->
+        <div class="panel animate-in">
+            <div class="panel-header">
+                <h3><i class="fas fa-user-check" style="color:var(--accent);"></i> Active Users</h3>
+                <span class="count-chip">{{ users|length }} records</span>
+            </div>
+            <div class="scroll-area">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Username</th>
+                            <th>Email</th>
+                            <th>Role</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for user in users %}
+                        <tr>
+                            <td class="muted-text">#{{ user.id }}</td>
+                            <td><strong>{{ user.username }}</strong></td>
+                            <td class="muted-text">{{ user.email or '—' }}</td>
+                            <td><span class="role-chip {{ user.role|lower }}">{{ user.role }}</span></td>
+                        </tr>
+                        {% else %}
+                        <tr class="empty-row">
+                            <td colspan="4">No active users</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
 
-    <h2>4. Deleted Users (Archive)</h2>
-    <table>
-        <tr><th>Original ID</th><th>Username</th><th>Role</th><th>Deleted At</th></tr>
-        {% for du in deleted_users %}
-        <tr><td>{{ du.original_user_id }}</td><td>{{ du.username }}</td><td>{{ du.role }}</td><td>{{ du.deleted_at }}</td></tr>
-        {% endfor %}
-    </table>
+        <!-- 2. Alerts -->
+        <div class="panel animate-in">
+            <div class="panel-header">
+                <h3><i class="fas fa-shield-halved" style="color:var(--danger);"></i> Alerts &amp; Incident Logs</h3>
+                <span class="count-chip">{{ alerts|length }} records</span>
+            </div>
+            <div class="scroll-area">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Timestamp</th>
+                            <th>Type</th>
+                            <th>Confidence</th>
+                            <th>Operator</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for alert in alerts %}
+                        <tr>
+                            <td class="muted-text">#{{ alert.id }}</td>
+                            <td class="muted-text" style="font-size:0.8rem;">{{ alert.timestamp }}</td>
+                            <td>
+                                {% set atype = alert.alert_type|lower %}
+                                <span class="alert-badge {% if 'violen' in atype %}violence{% elif 'weapon' in atype or 'gun' in atype or 'knife' in atype %}weapon{% elif 'crowd' in atype %}crowd{% elif 'intrusion' in atype %}intrusion{% else %}default{% endif %}">
+                                    {{ alert.alert_type.replace('-', ' ') }}
+                                </span>
+                            </td>
+                            <td>
+                                {% set conf = (alert.confidence * 100)|int %}
+                                <div class="conf-bar">
+                                    <span style="font-size:0.78rem; font-weight:600; min-width:28px;">{{ conf }}%</span>
+                                    <div class="conf-track">
+                                        <div class="conf-fill {% if conf >= 80 %}high{% elif conf >= 50 %}medium{% else %}low{% endif %}" style="width:{{ conf }}%;"></div>
+                                    </div>
+                                </div>
+                            </td>
+                            <td style="font-size:0.84rem;">{{ alert.operator_username or '—' }}</td>
+                        </tr>
+                        {% else %}
+                        <tr class="empty-row">
+                            <td colspan="5">No alerts recorded</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
 
-    <h2>5. Deleted Events (Archive)</h2>
-    <table>
-        <tr><th>Original ID</th><th>Name</th><th>Date</th><th>Deleted At</th></tr>
-        {% for de in deleted_events %}
-        <tr><td>{{ de.original_event_id }}</td><td>{{ de.name }}</td><td>{{ de.event_date }}</td><td>{{ de.deleted_at }}</td></tr>
-        {% endfor %}
-    </table>
-</div>
+        <!-- 3. Events -->
+        <div class="panel animate-in">
+            <div class="panel-header">
+                <h3><i class="fas fa-calendar-check" style="color:var(--warning);"></i> Scheduled Events</h3>
+                <span class="count-chip">{{ events|length }} records</span>
+            </div>
+            <div class="scroll-area">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Date</th>
+                            <th>Name</th>
+                            <th>Hours</th>
+                            <th>Expected Crowd</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for ev in events %}
+                        <tr>
+                            <td class="muted-text">#{{ ev.id }}</td>
+                            <td style="font-weight:600; font-size:0.84rem;">{{ ev.event_date }}</td>
+                            <td><strong>{{ ev.name }}</strong></td>
+                            <td>
+                                <span style="display:inline-flex; align-items:center; gap:4px; padding:3px 10px; border-radius:20px; background:var(--accent-glow); color:var(--accent); font-size:0.75rem; font-weight:600;">
+                                    <i class="fas fa-clock" style="font-size:0.65rem;"></i> {{ ev.start_hour }}:00 – {{ ev.end_hour }}:00
+                                </span>
+                            </td>
+                            <td>
+                                <span style="display:inline-flex; align-items:center; gap:4px; padding:3px 10px; border-radius:20px; background:var(--info-glow); color:#0284c7; font-size:0.75rem; font-weight:600;">
+                                    <i class="fas fa-people-group" style="font-size:0.65rem;"></i> {{ ev.expected_crowd }}
+                                </span>
+                            </td>
+                        </tr>
+                        {% else %}
+                        <tr class="empty-row">
+                            <td colspan="5">No events scheduled</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
 
+        <!-- 4. Deleted Users -->
+        <div class="panel animate-in">
+            <div class="panel-header">
+                <h3><i class="fas fa-user-slash" style="color:var(--text-muted);"></i> Archived Users</h3>
+                <span class="count-chip">{{ deleted_users|length }} records</span>
+            </div>
+            <div class="scroll-area">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Original ID</th>
+                            <th>Username</th>
+                            <th>Role</th>
+                            <th>Deleted At</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for du in deleted_users %}
+                        <tr class="archived-row">
+                            <td class="muted-text">#{{ du.original_user_id }}</td>
+                            <td><strong style="color:var(--text-secondary);">{{ du.username }}</strong></td>
+                            <td><span class="role-chip" style="background:#f1f5f9; color:var(--text-muted);">{{ du.role }}</span></td>
+                            <td class="muted-text" style="font-size:0.82rem;">{{ du.deleted_at }}</td>
+                        </tr>
+                        {% else %}
+                        <tr class="empty-row">
+                            <td colspan="4">No archived users</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- 5. Deleted Events -->
+        <div class="panel animate-in">
+            <div class="panel-header">
+                <h3><i class="fas fa-calendar-xmark" style="color:var(--purple);"></i> Archived Events</h3>
+                <span class="count-chip">{{ deleted_events|length }} records</span>
+            </div>
+            <div class="scroll-area">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Original ID</th>
+                            <th>Name</th>
+                            <th>Date</th>
+                            <th>Deleted At</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for de in deleted_events %}
+                        <tr class="archived-row">
+                            <td class="muted-text">#{{ de.original_event_id }}</td>
+                            <td><strong style="color:var(--text-secondary);">{{ de.name }}</strong></td>
+                            <td style="font-size:0.84rem;">{{ de.event_date }}</td>
+                            <td class="muted-text" style="font-size:0.82rem;">{{ de.deleted_at }}</td>
+                        </tr>
+                        {% else %}
+                        <tr class="empty-row">
+                            <td colspan="4">No archived events</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+    </div>
 </body>
+
 </html>

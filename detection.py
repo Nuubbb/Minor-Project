@@ -18,7 +18,7 @@ except Exception:
 
 # ----------------- DETECTION SETUP (loaded once) -----------------
 general_model = YOLO("yolov8n.pt")                                    # person detection (nano = faster)
-weapon_model = YOLO("weapon_dectect.pt")                              # gun/knife detection
+weapon_model = YOLO("best.pt")                              # gun/knife detection
 violence_detector = ViolenceDetector("violence_mobilenet_lstm.pt")   # temporal violence model
 assessor = ThreatAssessor()                                          # context-aware decision engine
 

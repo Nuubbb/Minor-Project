@@ -1,57 +1,418 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
-    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
-    <title>{{ role_type }} Login - AI Surveillance</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ role_type }} Login — Surveillance System</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
     <style>
-        /* NEW: Custom styling for the back button */
+        *,
+        *::before,
+        *::after {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Inter', -apple-system, sans-serif;
+            background: #f4f6f9;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        body::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background-image: linear-gradient(rgba(37, 99, 235, 0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(37, 99, 235, 0.03) 1px, transparent 1px);
+            background-size: 60px 60px;
+            animation: gridMove 20s linear infinite;
+        }
+        
+        @keyframes gridMove {
+            0% {
+                transform: translate(0, 0);
+            }
+            100% {
+                transform: translate(60px, 60px);
+            }
+        }
+        
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        @keyframes float {
+            0%,
+            100% {
+                transform: translateY(0);
+            }
+            50% {
+                transform: translateY(-8px);
+            }
+        }
+        
+        @keyframes shake {
+            0%,
+            100% {
+                transform: translateX(0);
+            }
+            20%,
+            60% {
+                transform: translateX(-6px);
+            }
+            40%,
+            80% {
+                transform: translateX(6px);
+            }
+        }
+        
+        .login-container {
+            position: relative;
+            z-index: 1;
+            width: 100%;
+            max-width: 440px;
+            padding: 20px;
+            animation: fadeInUp 0.7s ease-out;
+        }
+        /* Brand */
+        
+        .brand {
+            text-align: center;
+            margin-bottom: 32px;
+        }
+        
+        .brand-icon {
+            width: 56px;
+            height: 56px;
+            background: linear-gradient(135deg, #2563eb, #1d4ed8);
+            border-radius: 16px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            color: white;
+            margin-bottom: 14px;
+            box-shadow: 0 8px 30px rgba(37, 99, 235, 0.25);
+            animation: float 4s ease-in-out infinite;
+        }
+        
+        .brand h1 {
+            font-size: 1.5rem;
+            font-weight: 800;
+            color: #1e293b;
+            letter-spacing: 2px;
+        }
+        /* Card */
+        
+        .login-card {
+            background: white;
+            border-radius: 16px;
+            padding: 36px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.06), 0 1px 3px rgba(0, 0, 0, 0.04);
+            border: 1px solid #e2e8f0;
+        }
+        /* Back link */
+        
         .back-link {
-            color: #000000;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            color: #64748b;
             text-decoration: none;
-            font-size: 1.1rem;
-            font-weight: 600;
+            font-size: 0.82rem;
+            font-weight: 500;
+            margin-bottom: 24px;
             transition: all 0.2s ease;
         }
+        
         .back-link:hover {
+            color: #2563eb;
+            gap: 8px;
+        }
+        
+        .back-link i {
+            font-size: 0.75rem;
+            transition: transform 0.2s;
+        }
+        
+        .back-link:hover i {
+            transform: translateX(-3px);
+        }
+        /* Title with role badge */
+        
+        .login-title {
+            text-align: center;
+            margin-bottom: 28px;
+        }
+        
+        .login-title h2 {
+            font-size: 1.2rem;
+            font-weight: 700;
+            color: #1e293b;
+            margin-bottom: 6px;
+        }
+        
+        .role-chip {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 4px 14px;
+            border-radius: 20px;
+            font-size: 0.72rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        
+        .role-chip.operator {
+            background: rgba(37, 99, 235, 0.08);
+            color: #2563eb;
+        }
+        
+        .role-chip.admin {
+            background: rgba(15, 23, 42, 0.06);
+            color: #1e293b;
+        }
+        /* Flash messages */
+        
+        .flash {
+            padding: 12px 16px;
+            margin-bottom: 20px;
+            border-radius: 10px;
+            font-size: 0.85rem;
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            animation: shake 0.4s ease;
+        }
+        
+        .flash.error {
+            background: #fef2f2;
+            color: #991b1b;
+            border: 1px solid #fecaca;
+        }
+        
+        .flash.success {
+            background: #f0fdf4;
+            color: #166534;
+            border: 1px solid #bbf7d0;
+        }
+        /* Form */
+        
+        .form-group {
+            margin-bottom: 20px;
+        }
+        
+        .form-group label {
+            display: block;
+            font-size: 0.82rem;
+            font-weight: 600;
+            color: #475569;
+            margin-bottom: 8px;
+        }
+        
+        .input-wrapper {
+            position: relative;
+        }
+        
+        .input-wrapper i {
+            position: absolute;
+            left: 14px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #94a3b8;
+            font-size: 0.9rem;
+            transition: color 0.2s;
+        }
+        
+        .input-wrapper input {
+            width: 100%;
+            padding: 13px 14px 13px 42px;
+            border: 2px solid #e2e8f0;
+            border-radius: 10px;
+            font-family: inherit;
+            font-size: 0.9rem;
+            color: #1e293b;
+            background: #f8fafc;
+            transition: all 0.2s ease;
+            outline: none;
+        }
+        
+        .input-wrapper input::placeholder {
+            color: #cbd5e1;
+        }
+        
+        .input-wrapper input:focus {
+            border-color: #2563eb;
+            background: white;
+            box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.08);
+        }
+        
+        .input-wrapper input:focus+i,
+        .input-wrapper:focus-within i {
+            color: #2563eb;
+        }
+        /* Toggle password */
+        
+        .toggle-pw {
+            position: absolute;
+            right: 14px;
+            top: 50%;
+            transform: translateY(-50%);
+            background: none;
+            border: none;
+            color: #94a3b8;
+            cursor: pointer;
+            font-size: 0.9rem;
+            transition: color 0.2s;
+        }
+        
+        .toggle-pw:hover {
+            color: #64748b;
+            transform: translateY(-50%);
+        }
+        /* Submit */
+        
+        .submit-btn {
+            width: 100%;
+            padding: 14px;
+            border: none;
+            border-radius: 10px;
+            background: linear-gradient(135deg, #2563eb, #1d4ed8);
+            color: white;
+            font-family: inherit;
+            font-size: 0.95rem;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            margin-top: 8px;
+            box-shadow: 0 4px 15px rgba(37, 99, 235, 0.25);
+        }
+        
+        .submit-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(37, 99, 235, 0.35);
+        }
+        
+        .submit-btn:active {
+            transform: translateY(0);
+        }
+        /* Footer */
+        
+        .login-footer {
+            text-align: center;
+            margin-top: 22px;
+            font-size: 0.85rem;
+            color: #64748b;
+        }
+        
+        .login-footer a {
+            color: #2563eb;
+            text-decoration: none;
+            font-weight: 600;
+            transition: color 0.2s;
+        }
+        
+        .login-footer a:hover {
+            color: #1d4ed8;
             text-decoration: underline;
+        }
+        
+        @media (max-width: 480px) {
+            .login-card {
+                padding: 28px;
+            }
         }
     </style>
 </head>
-<body style="display: flex; justify-content: center; align-items: center; min-height: 100vh;">
-    <div class="login-box">
-        
-        <div style="margin-bottom: 20px;">
-            <!-- Updated to use the new back-link class -->
-            <a href="{{ url_for('index') }}" class="back-link">
-                &larr; Back to Portal Selection
-            </a>
+
+<body>
+    <div class="login-container">
+        <div class="brand">
+            <div class="brand-icon"><i class="fas fa-shield-halved"></i></div>
+            <h1>SURVEILLANCE SYSTEM</h1>
         </div>
 
-        <h2 style="text-align: center; margin-top: 0; color: #1e293b;">{{ role_type }} Portal</h2>
-        
-        {% with messages = get_flashed_messages(with_categories=true) %}
-            {% if messages %}
-                {% for category, message in messages %}
-                    <div class="flash {{ category }}">{{ message }}</div>
-                {% endfor %}
-            {% endif %}
-        {% endwith %}
+        <div class="login-card">
+            <a href="{{ url_for('index') }}" class="back-link">
+                <i class="fas fa-arrow-left"></i> Back to Portal Selection
+            </a>
 
-        <form method="POST" action="{{ url_for('login', role_type=role_type.lower()) }}">
-            <label style="font-weight: 500; color: #475569;">Username or Email</label>
-            <input type="text" name="username" placeholder="Enter Username or Email" required>
-            
-            <label style="font-weight: 500; color: #475569;">Password</label>
-            <input type="password" name="password" placeholder="Enter password" required>
-            
-            <button type="submit" style="width: 100%; margin-top: 10px;">Authenticate</button>
-        </form>
-        
-        <p style="text-align: center; margin-top: 25px; color: #64748b; font-size: 0.9rem;">
-            Don't have an account? 
-            <a href="{{ url_for('signup') }}" class="text-link">Register as an Operator</a>
-        </p>
+            <div class="login-title">
+                <h2>Sign In</h2>
+                <span class="role-chip {{ role_type|lower }}">
+                    <i class="fas {% if role_type|lower == 'admin' %}fa-user-shield{% else %}fa-desktop{% endif %}"></i>
+                    {{ role_type }} Portal
+                </span>
+            </div>
+
+            {% with messages = get_flashed_messages(with_categories=true) %} {% if messages %} {% for category, message in messages %}
+            <div class="flash {{ category }}">
+                <i class="fas {% if category == 'error' %}fa-circle-exclamation{% else %}fa-circle-check{% endif %}"></i> {{ message }}
+            </div>
+            {% endfor %} {% endif %} {% endwith %}
+
+            <form method="POST" action="{{ url_for('login', role_type=role_type.lower()) }}">
+                <div class="form-group">
+                    <label>Username or Email</label>
+                    <div class="input-wrapper">
+                        <input type="text" name="username" placeholder="Enter your username or email" required>
+                        <i class="fas fa-user"></i>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>Password</label>
+                    <div class="input-wrapper">
+                        <input type="password" name="password" id="password" placeholder="Enter your password" required>
+                        <i class="fas fa-lock"></i>
+                        <button type="button" class="toggle-pw" onclick="togglePassword()">
+                            <i class="fas fa-eye" id="eye-icon"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <button type="submit" class="submit-btn">
+                    <i class="fas fa-right-to-bracket"></i>&nbsp; Authenticate
+                </button>
+            </form>
+
+            <p class="login-footer">
+                Don't have an account?
+                <a href="{{ url_for('signup') }}">Register as Operator</a>
+            </p>
+        </div>
     </div>
+
+    <script>
+        function togglePassword() {
+            const pw = document.getElementById('password');
+            const icon = document.getElementById('eye-icon');
+            if (pw.type === 'password') {
+                pw.type = 'text';
+                icon.classList.replace('fa-eye', 'fa-eye-slash');
+            } else {
+                pw.type = 'password';
+                icon.classList.replace('fa-eye-slash', 'fa-eye');
+            }
+        }
+    </script>
 </body>
+
 </html>

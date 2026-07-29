@@ -1,40 +1,408 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
-    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
-    <title>Register - AI Surveillance</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Register — Surveillance System</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <style>
+        *,
+        *::before,
+        *::after {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Inter', -apple-system, sans-serif;
+            background: #f4f6f9;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        body::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background-image: linear-gradient(rgba(37, 99, 235, 0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(37, 99, 235, 0.03) 1px, transparent 1px);
+            background-size: 60px 60px;
+            animation: gridMove 20s linear infinite;
+        }
+        
+        @keyframes gridMove {
+            0% {
+                transform: translate(0, 0);
+            }
+            100% {
+                transform: translate(60px, 60px);
+            }
+        }
+        
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        @keyframes float {
+            0%,
+            100% {
+                transform: translateY(0);
+            }
+            50% {
+                transform: translateY(-8px);
+            }
+        }
+        
+        @keyframes shake {
+            0%,
+            100% {
+                transform: translateX(0);
+            }
+            20%,
+            60% {
+                transform: translateX(-6px);
+            }
+            40%,
+            80% {
+                transform: translateX(6px);
+            }
+        }
+        
+        .signup-container {
+            position: relative;
+            z-index: 1;
+            width: 100%;
+            max-width: 440px;
+            padding: 20px;
+            animation: fadeInUp 0.7s ease-out;
+        }
+        
+        .brand {
+            text-align: center;
+            margin-bottom: 32px;
+        }
+        
+        .brand-icon {
+            width: 56px;
+            height: 56px;
+            background: linear-gradient(135deg, #2563eb, #1d4ed8);
+            border-radius: 16px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            color: white;
+            margin-bottom: 14px;
+            box-shadow: 0 8px 30px rgba(37, 99, 235, 0.25);
+            animation: float 4s ease-in-out infinite;
+        }
+        
+        .brand h1 {
+            font-size: 1.5rem;
+            font-weight: 800;
+            color: #1e293b;
+            letter-spacing: 2px;
+        }
+        
+        .signup-card {
+            background: white;
+            border-radius: 16px;
+            padding: 36px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.06), 0 1px 3px rgba(0, 0, 0, 0.04);
+            border: 1px solid #e2e8f0;
+        }
+        
+        .back-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            color: #64748b;
+            text-decoration: none;
+            font-size: 0.82rem;
+            font-weight: 500;
+            margin-bottom: 24px;
+            transition: all 0.2s ease;
+        }
+        
+        .back-link:hover {
+            color: #2563eb;
+            gap: 8px;
+        }
+        
+        .back-link i {
+            font-size: 0.75rem;
+            transition: transform 0.2s;
+        }
+        
+        .back-link:hover i {
+            transform: translateX(-3px);
+        }
+        
+        .signup-title {
+            text-align: center;
+            margin-bottom: 28px;
+        }
+        
+        .signup-title h2 {
+            font-size: 1.2rem;
+            font-weight: 700;
+            color: #1e293b;
+            margin-bottom: 6px;
+        }
+        
+        .signup-title .chip {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 4px 14px;
+            border-radius: 20px;
+            font-size: 0.72rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            background: rgba(22, 163, 74, 0.08);
+            color: #16a34a;
+        }
+        
+        .flash {
+            padding: 12px 16px;
+            margin-bottom: 20px;
+            border-radius: 10px;
+            font-size: 0.85rem;
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            animation: shake 0.4s ease;
+        }
+        
+        .flash.error {
+            background: #fef2f2;
+            color: #991b1b;
+            border: 1px solid #fecaca;
+        }
+        
+        .flash.success {
+            background: #f0fdf4;
+            color: #166534;
+            border: 1px solid #bbf7d0;
+        }
+        
+        .form-group {
+            margin-bottom: 20px;
+        }
+        
+        .form-group label {
+            display: block;
+            font-size: 0.82rem;
+            font-weight: 600;
+            color: #475569;
+            margin-bottom: 8px;
+        }
+        
+        .input-wrapper {
+            position: relative;
+        }
+        
+        .input-wrapper i.field-icon {
+            position: absolute;
+            left: 14px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #94a3b8;
+            font-size: 0.9rem;
+            transition: color 0.2s;
+            pointer-events: none;
+        }
+        
+        .input-wrapper input {
+            width: 100%;
+            padding: 13px 14px 13px 42px;
+            border: 2px solid #e2e8f0;
+            border-radius: 10px;
+            font-family: inherit;
+            font-size: 0.9rem;
+            color: #1e293b;
+            background: #f8fafc;
+            transition: all 0.2s ease;
+            outline: none;
+        }
+        
+        .input-wrapper input::placeholder {
+            color: #cbd5e1;
+        }
+        
+        .input-wrapper input:focus {
+            border-color: #2563eb;
+            background: white;
+            box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.08);
+        }
+        
+        .input-wrapper:focus-within i.field-icon {
+            color: #2563eb;
+        }
+        
+        .toggle-pw {
+            position: absolute;
+            right: 14px;
+            top: 50%;
+            transform: translateY(-50%);
+            background: none;
+            border: none;
+            color: #94a3b8;
+            cursor: pointer;
+            font-size: 0.9rem;
+            transition: color 0.2s;
+        }
+        
+        .toggle-pw:hover {
+            color: #64748b;
+            transform: translateY(-50%);
+        }
+        
+        .submit-btn {
+            width: 100%;
+            padding: 14px;
+            border: none;
+            border-radius: 10px;
+            background: linear-gradient(135deg, #16a34a, #15803d);
+            color: white;
+            font-family: inherit;
+            font-size: 0.95rem;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            margin-top: 8px;
+            box-shadow: 0 4px 15px rgba(22, 163, 74, 0.25);
+        }
+        
+        .submit-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(22, 163, 74, 0.35);
+        }
+        
+        .submit-btn:active {
+            transform: translateY(0);
+        }
+        
+        .signup-footer {
+            text-align: center;
+            margin-top: 22px;
+            font-size: 0.85rem;
+            color: #64748b;
+        }
+        
+        .signup-footer a {
+            color: #2563eb;
+            text-decoration: none;
+            font-weight: 600;
+            transition: color 0.2s;
+        }
+        
+        .signup-footer a:hover {
+            color: #1d4ed8;
+            text-decoration: underline;
+        }
+        
+        @media (max-width: 480px) {
+            .signup-card {
+                padding: 28px;
+            }
+        }
+    </style>
 </head>
-<body style="display: flex; justify-content: center; align-items: center; min-height: 100vh;">
-    <div class="login-box">
-        <h2 style="text-align: center; margin-top: 0; color: #1e293b;">Operator Registration</h2>
-        
-        {% with messages = get_flashed_messages(with_categories=true) %}
-            {% if messages %}
-                {% for category, message in messages %}
-                    <div class="flash {{ category }}">{{ message }}</div>
-                {% endfor %}
-            {% endif %}
-        {% endwith %}
 
-        <form method="POST" action="{{ url_for('signup') }}">
-            <label style="font-weight: 500; color: #475569;">Choose Username</label>
-            <input type="text" name="username" placeholder="e.g., JaneDoe" required>
-            
-            <!-- NEW: Email Input Field -->
-            <label style="font-weight: 500; color: #475569;">Email Address</label>
-            <input type="email" name="email" placeholder="operator@system.com" required>
-            
-            <label style="font-weight: 500; color: #475569;">Create Password</label>
-            <input type="password" name="password" placeholder="Minimum 6 characters" required>
-            
-            <button type="submit" class="btn-success" style="width: 100%; margin-top: 10px;">Create Account</button>
-        </form>
-        
-        <p style="text-align: center; margin-top: 25px; color: #64748b; font-size: 0.9rem;">
-            Already registered? 
-            <a href="{{ url_for('login', role_type='operator') }}" class="text-link">Log in as Operator</a>
-        </p>
+<body>
+    <div class="signup-container">
+        <div class="brand">
+            <div class="brand-icon"><i class="fas fa-shield-halved"></i></div>
+            <h1>SURVEILLANCE SYSTEM</h1>
+        </div>
+
+        <div class="signup-card">
+            <a href="{{ url_for('login', role_type='operator') }}" class="back-link">
+                <i class="fas fa-arrow-left"></i> Back to Login
+            </a>
+
+            <div class="signup-title">
+                <h2>Create Account</h2>
+                <span class="chip">
+                    <i class="fas fa-user-plus"></i> Operator Registration
+                </span>
+            </div>
+
+            {% with messages = get_flashed_messages(with_categories=true) %} {% if messages %} {% for category, message in messages %}
+            <div class="flash {{ category }}">
+                <i class="fas {% if category == 'error' %}fa-circle-exclamation{% else %}fa-circle-check{% endif %}"></i> {{ message }}
+            </div>
+            {% endfor %} {% endif %} {% endwith %}
+
+            <form method="POST" action="{{ url_for('signup') }}">
+                <div class="form-group">
+                    <label>Choose Username</label>
+                    <div class="input-wrapper">
+                        <input type="text" name="username" placeholder="e.g., JaneDoe" required>
+                        <i class="fas fa-user field-icon"></i>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>Email Address</label>
+                    <div class="input-wrapper">
+                        <input type="email" name="email" placeholder="operator@system.com" required>
+                        <i class="fas fa-envelope field-icon"></i>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>Create Password</label>
+                    <div class="input-wrapper">
+                        <input type="password" name="password" id="password" placeholder="Minimum 6 characters" required>
+                        <i class="fas fa-lock field-icon"></i>
+                        <button type="button" class="toggle-pw" onclick="togglePassword()">
+                            <i class="fas fa-eye" id="eye-icon"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <button type="submit" class="submit-btn">
+                    <i class="fas fa-user-check"></i>&nbsp; Create Account
+                </button>
+            </form>
+
+            <p class="signup-footer">
+                Already registered?
+                <a href="{{ url_for('login', role_type='operator') }}">Log in as Operator</a>
+            </p>
+        </div>
     </div>
+
+    <script>
+        function togglePassword() {
+            const pw = document.getElementById('password');
+            const icon = document.getElementById('eye-icon');
+            if (pw.type === 'password') {
+                pw.type = 'text';
+                icon.classList.replace('fa-eye', 'fa-eye-slash');
+            } else {
+                pw.type = 'password';
+                icon.classList.replace('fa-eye-slash', 'fa-eye');
+            }
+        }
+    </script>
 </body>
+
 </html>
