@@ -49,6 +49,13 @@ def login(role_type):
             user = cursor.fetchone()
 
             if user and check_password_hash(user['password'], password):
+                user_status = user['status'] if user['status'] else 'approved'
+                if user_status == 'pending':
+                    flash("Your account is pending admin approval.", "warning")
+                    return render_template('login.html', role_type=role_type)
+                if user_status == 'rejected':
+                    flash("Your registration request was rejected.", "error")
+                    return render_template('login.html', role_type=role_type)
                 if user['role'].lower() == role_type.lower():
                     session['username'] = user['username']
                     session['role'] = user['role']
@@ -78,13 +85,14 @@ def signup():
 
             hashed_pw = generate_password_hash(password)
             cursor.execute(
-                "INSERT INTO users (username, password, email, role) VALUES (?, ?, ?, 'Operator')",
+                "INSERT INTO users (username, password, email, role, status) VALUES (?, ?, ?, 'Operator', 'pending')",
                 (username, hashed_pw, email)
             )
             conn.commit()
 
-        flash("Account created! Please log in to the Operator portal.", "success")
-        return redirect(url_for('login', role_type='operator'))
+        flash("Account created! Your request is pending admin approval.", "info")
+        return redirect(url_for('index'))
+       
 
     return render_template('signup.html')
 
@@ -259,8 +267,11 @@ def users():
         conn.row_factory = sqlite3.Row
         cursor = conn.cursor()
 
-        cursor.execute("SELECT id, username, email, role FROM users")
+        cursor.execute("SELECT id, username, email, role, status FROM users WHERE status='approved' OR status IS NULL")
         active_users = cursor.fetchall()
+
+        cursor.execute("SELECT id, username, email, role FROM users WHERE status='pending'")
+        pending_users = cursor.fetchall()
 
         cursor.execute("SELECT original_user_id, username, email, role, deleted_at FROM deleted_users ORDER BY deleted_at DESC")
         archived_users = cursor.fetchall()
@@ -269,6 +280,7 @@ def users():
                            username=session['username'],
                            role=current_role,
                            users=active_users,
+                           pending_users=pending_users,
                            deleted_users=archived_users)
 
 
@@ -419,6 +431,27 @@ def database_viewer():
                            events=all_events,
                            deleted_events=del_events,
                            alerts=all_alerts)
+
+@app.route('/approve_user/<int:user_id>', methods=['POST'])
+def approve_user(user_id):
+    if 'username' not in session or session.get('role', '').lower() != 'admin':
+        return redirect(url_for('index'))
+    with sqlite3.connect(DATABASE) as conn:
+        conn.execute("UPDATE users SET status='approved' WHERE id=?", (user_id,))
+        conn.commit()
+    flash("User approved.", "success")
+    return redirect(url_for('users'))
+
+
+@app.route('/reject_user/<int:user_id>', methods=['POST'])
+def reject_user(user_id):
+    if 'username' not in session or session.get('role', '').lower() != 'admin':
+        return redirect(url_for('index'))
+    with sqlite3.connect(DATABASE) as conn:
+        conn.execute("UPDATE users SET status='rejected' WHERE id=?", (user_id,))
+        conn.commit()
+    flash("User rejected.", "success")
+    return redirect(url_for('users'))
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', debug=True, port=5001, threaded=True)

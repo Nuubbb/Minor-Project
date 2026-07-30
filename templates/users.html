@@ -773,6 +773,60 @@
                 </div>
                 {% endfor %} {% endif %} {% endwith %}
 
+                <!-- Pending Approvals -->
+                {% if pending_users %}
+                <div class="panel animate-in" style="border-left: 3px solid var(--warning);">
+                    <div class="panel-header">
+                        <h3><i class="fas fa-clock" style="color: var(--warning);"></i> Pending Approvals</h3>
+                        <span style="font-size:0.78rem; color:var(--warning); font-weight:600;">{{ pending_users|length }} waiting</span>
+                    </div>
+                    <div class="panel-body" style="padding:0;">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>User</th>
+                                    <th>Email</th>
+                                    <th>Action</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for pu in pending_users %}
+                                <tr>
+                                    <td style="color:var(--text-muted); font-size:0.82rem;">#{{ pu['id'] }}</td>
+                                    <td>
+                                        <span class="user-row-avatar" style="background:linear-gradient(135deg, var(--warning), #fbbf24);">
+                                            {{ pu['username'][0]|upper }}
+                                        </span>
+                                        <strong>{{ pu['username'] }}</strong>
+                                    </td>
+                                    <td>
+                                        {% if pu['email'] %}
+                                        <span class="email-text"><i class="fas fa-envelope" style="color:var(--text-muted); margin-right:6px; font-size:0.8rem;"></i>{{ pu['email'] }}</span>
+                                        {% else %}
+                                        <span class="email-none">No email provided</span>
+                                        {% endif %}
+                                    </td>
+                                    <td style="display:flex; gap:8px;">
+                                        <form action="{{ url_for('approve_user', user_id=pu['id']) }}" method="POST" style="margin:0;">
+                                            <button type="submit" style="padding:7px 14px; border-radius:8px; border:1px solid rgba(22,163,74,0.2); background:rgba(22,163,74,0.06); color:var(--success); font-size:0.78rem; font-weight:600; cursor:pointer;">
+                                                <i class="fas fa-check" style="font-size:0.7rem;"></i> Approve
+                                            </button>
+                                        </form>
+                                        <form action="{{ url_for('reject_user', user_id=pu['id']) }}" method="POST" style="margin:0;" onsubmit="return confirm('Reject this user?');">
+                                            <button type="submit" class="delete-btn">
+                                                <i class="fas fa-xmark" style="font-size:0.7rem;"></i> Reject
+                                            </button>
+                                        </form>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                {% endif %}
+
                 <!-- Active Users -->
                 <div class="panel animate-in">
                     <div class="panel-header">

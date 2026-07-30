@@ -39,9 +39,12 @@ def init_db():
         # Existing databases created before phone/lat/lng existed -- add them
         # in place (SQLite has no "ADD COLUMN IF NOT EXISTS", so check first).
         existing_cols = {row[1] for row in cursor.execute("PRAGMA table_info(users)").fetchall()}
-        for col, coltype in (("phone", "TEXT"), ("lat", "REAL"), ("lng", "REAL")):
+        for col, coltype, default in (("phone", "TEXT", None), ("lat", "REAL", None), ("lng", "REAL", None), ("status", "TEXT", "'approved'")):
             if col not in existing_cols:
-                cursor.execute(f"ALTER TABLE users ADD COLUMN {col} {coltype}")
+                if default:
+                    cursor.execute(f"ALTER TABLE users ADD COLUMN {col} {coltype} DEFAULT {default}")
+                else:
+                    cursor.execute(f"ALTER TABLE users ADD COLUMN {col} {coltype}")
 
         # 2. Create Deleted Users Table
         cursor.execute('''
