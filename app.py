@@ -4,7 +4,7 @@ from email_alert import send_verification_code
 from datetime import datetime
 from flask import Flask, render_template, request, redirect, url_for, session, Response, flash, render_template_string, send_file, jsonify
 from werkzeug.security import generate_password_hash, check_password_hash
-
+import dns.resolver
 from config import SECRET_KEY, SCREENSHOT_DIR
 from database import (init_db, mark_false_alarm, DATABASE,
                       init_events, add_event, delete_user, delete_event,
@@ -89,7 +89,13 @@ def signup():
             if cursor.fetchone():
                 flash("Email already registered.", "error")
                 return redirect(url_for('signup'))
-
+            # Check email domain exists
+            try:
+                domain = email.split('@')[1]
+                dns.resolver.resolve(domain, 'MX')
+            except Exception:
+                flash("Invalid email domain. Please use a real email address.", "error")
+                return redirect(url_for('signup'))
             code = str(random.randint(100000, 999999))
             hashed_pw = generate_password_hash(password)
 
@@ -103,8 +109,7 @@ def signup():
             )
             conn.commit()
 
-        flash("Verification code sent to your email.", "success")
-        return redirect(url_for('verify_email', email=email))
+flash("If this email exists, you'll receive a verification code shortly.", "info")        return redirect(url_for('verify_email', email=email))
 
     return render_template('signup.html')
 
