@@ -6,8 +6,7 @@ import os
 from datetime import datetime
 from ultralytics import YOLO
 
-from database import log_alert
-from database import get_active_event
+from database import log_alert, get_active_event, get_restricted_zones, get_settings
 from violence_detector import ViolenceDetector          # YOUR temporal violence model
 from context_engine import ThreatAssessor, IGNORE, LOG, NOTIFY, ALARM   # YOUR context engine
 from config import SCREENSHOT_DIR
@@ -20,7 +19,25 @@ except Exception:
 general_model = YOLO("yolov8n.pt")                                    # person detection (nano = faster)
 weapon_model = YOLO("best.pt")                              # gun/knife detection
 violence_detector = ViolenceDetector("violence_mobilenet_lstm.pt")   # temporal violence model
-assessor = ThreatAssessor()                                          # context-aware decision engine
+assessor = ThreatAssessor()
+_settings_cache = {"checked": 0.0}
+
+def _reload_settings():
+    """Reload admin settings into the assessor every 30 seconds."""
+    t = time.time()
+    if t - _settings_cache["checked"] > 30:
+        try:
+            s = get_settings()
+            assessor.violence_threshold = float(s["violence_threshold"])
+            assessor.violence_streak_needed = int(s["violence_streak"])
+            assessor.weapon_conf = float(s["weapon_conf"])
+            assessor.closing_hour = int(s["closing_hour"])
+            assessor.dwell_seconds = int(s["dwell_seconds"])
+            assessor.log_cooldown = int(s["log_cooldown"])
+            assessor.notify_cooldown = int(s["notify_cooldown"])
+        except Exception as e:
+            print("[settings] reload skip:", e)
+        _settings_cache["checked"] = t                                         # context-aware decision engine
 
 WEAPON_KEYWORDS = ("gun", "knife", "knive", "pistol", "rifle", "handgun", "shotgun", "weapon", "blade")
 ACTION_COOLDOWN = 5.0
@@ -161,6 +178,7 @@ def generate_frames(operator_email=None, source=None, operator_username="system"
             fail_count = 0
             frame = cv2.resize(frame, (640, 480))
 
+            _reload_settings()
             is_violent, violence_prob = violence_detector.update(frame)
 
             frame_no += 1
