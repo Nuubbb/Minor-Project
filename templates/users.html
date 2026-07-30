@@ -710,6 +710,9 @@
                 <a href="{{ url_for('events') }}" class="nav-item">
                     <i class="fas fa-calendar-check"></i><span>Events</span>
                 </a>
+                <a href="{{ url_for('settings_page') }}" class="nav-item">
+                    <i class="fas fa-gear"></i><span>Settings</span>
+                </a>
                 {% endif %}
             </nav>
             <div class="sidebar-footer">
@@ -802,10 +805,8 @@
                                     </td>
                                     <td>
                                         {% if pu['email'] %}
-                                        <span class="email-text"><i class="fas fa-envelope" style="color:var(--text-muted); margin-right:6px; font-size:0.8rem;"></i>{{ pu['email'] }}</span>
-                                        {% else %}
-                                        <span class="email-none">No email provided</span>
-                                        {% endif %}
+                                        <span class="email-text"><i class="fas fa-envelope" style="color:var(--text-muted); margin-right:6px; font-size:0.8rem;"></i>{{ pu['email'] }}</span> {% else %}
+                                        <span class="email-none">No email provided</span> {% endif %}
                                     </td>
                                     <td style="display:flex; gap:8px;">
                                         <form action="{{ url_for('approve_user', user_id=pu['id']) }}" method="POST" style="margin:0;">
