@@ -7,8 +7,10 @@ from werkzeug.security import generate_password_hash, check_password_hash
 import dns.resolver
 from config import SECRET_KEY, SCREENSHOT_DIR
 from database import (init_db, mark_false_alarm, DATABASE,
-                      init_events, add_event, delete_user, delete_event,
-                      get_device_location, update_device_location)
+                      init_events, add_event, delete_event,
+                      get_device_location,
+                      get_restricted_zones, add_restricted_zone, delete_restricted_zone,
+                      get_settings, update_setting)
 from detection import generate_frames
 from api import api_bp
 
@@ -98,14 +100,16 @@ def signup():
                 return redirect(url_for('signup'))
             code = str(random.randint(100000, 999999))
             hashed_pw = generate_password_hash(password)
-
+            lat = request.form.get('lat', '')
+            lng = request.form.get('lng', '')
             if not send_verification_code(email, code):
                 flash("Could not send verification email. Please check your email address.", "error")
                 return redirect(url_for('signup'))
 
             cursor.execute(
-                "INSERT INTO email_verification (email, code, username, password_hash, created_at) VALUES (?, ?, ?, ?, ?)",
-                (email, code, username, hashed_pw, datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
+                "INSERT INTO email_verification (email, code, username, password_hash, created_at, lat, lng) VALUES (?, ?, ?, ?, ?, ?, ?)",
+                (email, code, username, hashed_pw, datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                 float(lat) if lat else None, float(lng) if lng else None)
             )
             conn.commit()
 
@@ -146,8 +150,9 @@ def verify_email():
 
             # Create the actual user account
             cursor.execute(
-                "INSERT INTO users (username, password, email, role, status) VALUES (?, ?, ?, 'Operator', 'pending')",
-                (record['username'], record['password_hash'], record['email'])
+                "INSERT INTO users (username, password, email, role, status, lat, lng) VALUES (?, ?, ?, 'Operator', 'pending', ?, ?)",
+                (record['username'], record['password_hash'], record['email'],
+                 record['lat'], record['lng'])
             )
             conn.commit()
 
@@ -522,6 +527,30 @@ def reject_user(user_id):
         conn.commit()
     flash("User rejected.", "success")
     return redirect(url_for('users'))
+
+# ==================== SYSTEM SETTINGS ====================
+
+@app.route('/settings')
+def settings_page():
+    if 'username' not in session or session.get('role', '').lower() != 'admin':
+        flash("Access Denied: Administrator privileges required.", "error")
+        return redirect(url_for('dashboard'))
+    settings = get_settings()
+    return render_template('settings.html', username=session['username'],
+                           role=session['role'], settings=settings)
+
+
+@app.route('/settings/update', methods=['POST'])
+def update_settings():
+    if 'username' not in session or session.get('role', '').lower() != 'admin':
+        return redirect(url_for('index'))
+    for key in ('closing_hour', 'dwell_seconds', 'violence_threshold',
+                'violence_streak', 'weapon_conf', 'log_cooldown', 'notify_cooldown'):
+        value = request.form.get(key)
+        if value is not None:
+            update_setting(key, value)
+    flash("Settings updated successfully.", "success")
+    return redirect(url_for('settings_page'))
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', debug=True, port=5001, threaded=True)

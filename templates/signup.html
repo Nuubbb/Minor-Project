@@ -377,6 +377,15 @@
                         </button>
                     </div>
                 </div>
+                <input type="hidden" name="lat" id="lat">
+                <input type="hidden" name="lng" id="lng">
+
+                <div class="form-group">
+                    <label>Your Location</label>
+                    <button type="button" id="loc-btn" onclick="getLocation()" style="width:100%; padding:13px; border:2px dashed #e2e8f0; border-radius:10px; background:#f8fafc; color:#64748b; font-family:inherit; font-size:0.85rem; font-weight:500; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:8px; transition:all 0.2s;">
+                        <i class="fas fa-location-dot"></i> <span id="loc-text">Tap to share your location</span>
+                    </button>
+                </div>
 
                 <button type="submit" class="submit-btn">
                     <i class="fas fa-user-check"></i>&nbsp; Create Account
@@ -401,6 +410,37 @@
                 pw.type = 'password';
                 icon.classList.replace('fa-eye-slash', 'fa-eye');
             }
+        }
+
+        function getLocation() {
+            const btn = document.getElementById('loc-btn');
+            const txt = document.getElementById('loc-text');
+            txt.textContent = 'Requesting location...';
+            btn.style.borderColor = '#2563eb';
+            btn.style.color = '#2563eb';
+
+            if (!navigator.geolocation) {
+                txt.textContent = 'Geolocation not supported';
+                btn.style.borderColor = '#dc2626';
+                btn.style.color = '#dc2626';
+                return;
+            }
+
+            navigator.geolocation.getCurrentPosition(
+                function(pos) {
+                    document.getElementById('lat').value = pos.coords.latitude;
+                    document.getElementById('lng').value = pos.coords.longitude;
+                    txt.textContent = 'Location captured ✓';
+                    btn.style.borderColor = '#16a34a';
+                    btn.style.color = '#16a34a';
+                    btn.style.background = 'rgba(22,163,74,0.05)';
+                },
+                function(err) {
+                    txt.textContent = 'Location denied — you can still register';
+                    btn.style.borderColor = '#f59e0b';
+                    btn.style.color = '#f59e0b';
+                }
+            );
         }
     </script>
 </body>

@@ -19,10 +19,11 @@ def _unique_username(cursor, base):
         n += 1
     return username
 
+
 def init_db():
     with sqlite3.connect(DATABASE) as conn:
         cursor = conn.cursor()
-        
+
         # 1. Create Users Table
         cursor.execute('''
         CREATE TABLE IF NOT EXISTS users (
@@ -36,8 +37,6 @@ def init_db():
             lng REAL
         )
         ''')
-        # Existing databases created before phone/lat/lng existed -- add them
-        # in place (SQLite has no "ADD COLUMN IF NOT EXISTS", so check first).
         existing_cols = {row[1] for row in cursor.execute("PRAGMA table_info(users)").fetchall()}
         for col, coltype, default in (("phone", "TEXT", None), ("lat", "REAL", None), ("lng", "REAL", None), ("status", "TEXT", "'approved'")):
             if col not in existing_cols:
@@ -57,8 +56,8 @@ def init_db():
             deleted_at TEXT
         )
         ''')
-        
-        # 3. Create Alerts Table (NEW: added operator_username)
+
+        # 3. Create Alerts Table
         cursor.execute('''
         CREATE TABLE IF NOT EXISTS alerts (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -69,17 +68,14 @@ def init_db():
             operator_username TEXT DEFAULT 'system'
         )
         ''')
-        
+
         # 4. Ensure Admin Account Exists
         cursor.execute("SELECT * FROM users WHERE username='admin'")
         if not cursor.fetchone():
             hashed_pw = generate_password_hash('admin123')
             cursor.execute("INSERT INTO users (username, password, email, role) VALUES (?, ?, ?, 'Admin')", ('admin', hashed_pw, 'admin@system.local'))
 
-        # 5. Device Location -- single row (id=1) holding the real, admin-set
-        # location of this camera/device. Replaces the old hardcoded
-        # config.py placeholder. Created before the community migration below
-        # so its lat/lng can be used to seed nearby resident pins.
+        # 5. Device Location
         cursor.execute('''
         CREATE TABLE IF NOT EXISTS device_location (
             id INTEGER PRIMARY KEY CHECK (id = 1),
@@ -98,11 +94,7 @@ def init_db():
         device_row = cursor.execute("SELECT lat, lng FROM device_location WHERE id=1").fetchone()
         base_lat, base_lng = device_row[0], device_row[1]
 
-        # 6. Community members are real logged-in accounts (role='Resident'
-        # on `users`), not a separate passive-contact table -- this is what
-        # lets an owner get a real push notification and validate a peer
-        # report themselves. Migrate any rows from the old `community_members`
-        # table (used before this feature had login) into `users`, then drop it.
+        # 6. Migrate old community_members table if it exists
         old_table_exists = cursor.execute(
             "SELECT name FROM sqlite_master WHERE type='table' AND name='community_members'"
         ).fetchone()
@@ -119,8 +111,7 @@ def init_db():
                 )
             cursor.execute("DROP TABLE community_members")
 
-        # 7. If there are still no Residents at all (fresh install, no old
-        # table to migrate from), seed the same dummy community directly.
+        # 7. Seed dummy residents if none exist
         cursor.execute("SELECT COUNT(*) FROM users WHERE role='Resident'")
         if cursor.fetchone()[0] == 0:
             dummy_community = [
@@ -140,11 +131,7 @@ def init_db():
                      base_lat + dlat, base_lng + dlng)
                 )
 
-        # 8. Peer Reports -- a resident flagging another resident's (simulated)
-        # camera as suspicious. Pending until the house owner validates it;
-        # a confirmed report becomes a normal `alerts` row (via log_alert)
-        # so it flows through the existing Take-a-Look / Notify-Community
-        # pipeline instead of needing a parallel one.
+        # 8. Peer Reports
         cursor.execute('''
         CREATE TABLE IF NOT EXISTS peer_reports (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -156,7 +143,8 @@ def init_db():
             resolved_at TEXT
         )
         ''')
-# 9. Email verification codes (temporary, used during signup)
+
+        # 9. Email verification codes (with location)
         cursor.execute('''
         CREATE TABLE IF NOT EXISTS email_verification (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -165,13 +153,37 @@ def init_db():
             username TEXT NOT NULL,
             password_hash TEXT NOT NULL,
             created_at TEXT NOT NULL,
-            used INTEGER DEFAULT 0
+            used INTEGER DEFAULT 0,
+            lat REAL,
+            lng REAL
         )
         ''')
+
+        # 10. Restricted zones
+        cursor.execute('''
+        CREATE TABLE IF NOT EXISTS restricted_zones (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            label TEXT DEFAULT 'Restricted Zone',
+            x1 REAL NOT NULL,
+            y1 REAL NOT NULL,
+            x2 REAL NOT NULL,
+            y2 REAL NOT NULL,
+            created_by TEXT,
+            created_at TEXT
+        )
+        ''')
+        # 11. System settings (admin-editable thresholds)
+        cursor.execute('''
+        CREATE TABLE IF NOT EXISTS system_settings (
+            key TEXT PRIMARY KEY,
+            value TEXT NOT NULL,
+            updated_at TEXT
+        )
+        ''')
+
     conn.commit()
 
 
-# NEW: Updated to accept and log the operator's username
 def log_alert(alert_type, confidence, operator_username="system"):
     with sqlite3.connect(DATABASE) as conn:
         cursor = conn.execute(
@@ -181,10 +193,12 @@ def log_alert(alert_type, confidence, operator_username="system"):
         conn.commit()
         return cursor.lastrowid
 
+
 def mark_false_alarm(alert_id):
     with sqlite3.connect(DATABASE) as conn:
         conn.execute("UPDATE alerts SET is_false_alarm = 1 WHERE id = ?", (alert_id,))
         conn.commit()
+
 
 def count_after_hours():
     with sqlite3.connect(DATABASE) as conn:
@@ -196,20 +210,16 @@ def count_after_hours():
 
 def init_events():
     conn = sqlite3.connect(DATABASE)
-    
-    # 1. Create Active Events Table
     conn.execute("""
     CREATE TABLE IF NOT EXISTS events (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
-        event_date TEXT, -- 'YYYY-MM-DD'
+        event_date TEXT,
         name TEXT,
-        start_hour INTEGER, 
-        end_hour INTEGER, 
-        expected_crowd INTEGER 
+        start_hour INTEGER,
+        end_hour INTEGER,
+        expected_crowd INTEGER
     )
     """)
-    
-    # NEW: Create Deleted Events Table for archiving
     conn.execute("""
     CREATE TABLE IF NOT EXISTS deleted_events (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -222,7 +232,6 @@ def init_events():
         deleted_at TEXT
     )
     """)
-    
     conn.commit()
     conn.close()
 
@@ -246,7 +255,6 @@ def get_all_events():
 
 
 def delete_user(user_id, requester_username):
-    """Archive + delete a user. Returns ('ok', user_dict) / ('self', None) / ('not_found', None)."""
     with sqlite3.connect(DATABASE) as conn:
         conn.row_factory = sqlite3.Row
         cursor = conn.cursor()
@@ -255,7 +263,6 @@ def delete_user(user_id, requester_username):
 
         if not user_to_delete:
             return "not_found", None
-
         if user_to_delete["username"] == requester_username:
             return "self", None
 
@@ -264,14 +271,12 @@ def delete_user(user_id, requester_username):
             VALUES (?, ?, ?, ?, ?)
         ''', (user_to_delete["id"], user_to_delete["username"], user_to_delete["email"],
               user_to_delete["role"], datetime.now().strftime("%Y-%m-%d %H:%M:%S")))
-
         cursor.execute("DELETE FROM users WHERE id=?", (user_id,))
         conn.commit()
         return "ok", dict(user_to_delete)
 
 
 def delete_event(event_id):
-    """Archive + delete an event. Returns ('ok', event_dict) / ('not_found', None)."""
     with sqlite3.connect(DATABASE) as conn:
         conn.row_factory = sqlite3.Row
         cursor = conn.cursor()
@@ -290,14 +295,12 @@ def delete_event(event_id):
         ''', (event_to_delete["id"], event_to_delete["event_date"], event_to_delete["name"],
               event_to_delete["start_hour"], event_to_delete["end_hour"], event_to_delete["expected_crowd"],
               datetime.now().strftime("%Y-%m-%d %H:%M:%S")))
-
         cursor.execute("DELETE FROM events WHERE id=?", (event_id,))
         conn.commit()
         return "ok", dict(event_to_delete)
 
 
 def get_community_members():
-    """Residents (community members) are real `users` accounts (role='Resident')."""
     conn = sqlite3.connect(DATABASE)
     conn.row_factory = sqlite3.Row
     rows = conn.execute(
@@ -308,7 +311,6 @@ def get_community_members():
 
 
 def add_community_member(name, email, phone=None, lat=None, lng=None):
-    """Creates a new Resident account. Returns the generated username and default password."""
     default_password = "resident123"
     with sqlite3.connect(DATABASE) as conn:
         cursor = conn.cursor()
@@ -322,7 +324,6 @@ def add_community_member(name, email, phone=None, lat=None, lng=None):
 
 
 def delete_community_member(member_id):
-    """Archive + delete a Resident account (same pattern as delete_user)."""
     with sqlite3.connect(DATABASE) as conn:
         conn.row_factory = sqlite3.Row
         cursor = conn.cursor()
@@ -359,7 +360,6 @@ def update_device_location(label, lat, lng):
 
 
 def get_active_event():
-    """If RIGHT NOW falls inside a scheduled event, return (name, expected_crowd); else None."""
     from datetime import datetime
     now = datetime.now()
     today = now.strftime("%Y-%m-%d")
@@ -423,3 +423,63 @@ def resolve_peer_report(report_id, confirmed):
         )
         conn.commit()
         return "ok" if cursor.rowcount else "not_found"
+
+
+# ==================== RESTRICTED ZONES ====================
+
+def get_restricted_zones():
+    conn = sqlite3.connect(DATABASE)
+    conn.row_factory = sqlite3.Row
+    rows = conn.execute("SELECT * FROM restricted_zones ORDER BY id").fetchall()
+    conn.close()
+    return [dict(r) for r in rows]
+
+
+def add_restricted_zone(label, x1, y1, x2, y2, created_by):
+    with sqlite3.connect(DATABASE) as conn:
+        cursor = conn.execute(
+            "INSERT INTO restricted_zones (label, x1, y1, x2, y2, created_by, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)",
+            (label, x1, y1, x2, y2, created_by, datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
+        )
+        conn.commit()
+        return cursor.lastrowid
+
+
+def delete_restricted_zone(zone_id):
+    with sqlite3.connect(DATABASE) as conn:
+        conn.execute("DELETE FROM restricted_zones WHERE id=?", (zone_id,))
+        conn.commit()
+# ==================== SYSTEM SETTINGS ====================
+
+DEFAULT_SETTINGS = {
+    "closing_hour": "17",
+    "dwell_seconds": "15",
+    "violence_threshold": "0.75",
+    "violence_streak": "25",
+    "weapon_conf": "0.60",
+    "log_cooldown": "30",
+    "notify_cooldown": "20",
+}
+
+
+def get_settings():
+    conn = sqlite3.connect(DATABASE)
+    conn.row_factory = sqlite3.Row
+    rows = conn.execute("SELECT key, value FROM system_settings").fetchall()
+    conn.close()
+    settings = dict(DEFAULT_SETTINGS)
+    for row in rows:
+        settings[row['key']] = row['value']
+    return settings
+
+
+def update_setting(key, value):
+    with sqlite3.connect(DATABASE) as conn:
+        existing = conn.execute("SELECT 1 FROM system_settings WHERE key=?", (key,)).fetchone()
+        if existing:
+            conn.execute("UPDATE system_settings SET value=?, updated_at=? WHERE key=?",
+                         (value, datetime.now().strftime("%Y-%m-%d %H:%M:%S"), key))
+        else:
+            conn.execute("INSERT INTO system_settings (key, value, updated_at) VALUES (?, ?, ?)",
+                         (key, value, datetime.now().strftime("%Y-%m-%d %H:%M:%S")))
+        conn.commit()
