@@ -1,0 +1,377 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Verify Email – Surveillance System</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <style>
+        *,
+        *::before,
+        *::after {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Inter', -apple-system, sans-serif;
+            background: #f4f6f9;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        body::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background-image: linear-gradient(rgba(37, 99, 235, 0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(37, 99, 235, 0.03) 1px, transparent 1px);
+            background-size: 60px 60px;
+            animation: gridMove 20s linear infinite;
+        }
+        
+        @keyframes gridMove {
+            0% {
+                transform: translate(0, 0)
+            }
+            100% {
+                transform: translate(60px, 60px)
+            }
+        }
+        
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px)
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0)
+            }
+        }
+        
+        @keyframes float {
+            0%,
+            100% {
+                transform: translateY(0)
+            }
+            50% {
+                transform: translateY(-8px)
+            }
+        }
+        
+        @keyframes shake {
+            0%,
+            100% {
+                transform: translateX(0)
+            }
+            20%,
+            60% {
+                transform: translateX(-6px)
+            }
+            40%,
+            80% {
+                transform: translateX(6px)
+            }
+        }
+        
+        .verify-container {
+            position: relative;
+            z-index: 1;
+            width: 100%;
+            max-width: 440px;
+            padding: 20px;
+            animation: fadeInUp 0.7s ease-out;
+        }
+        
+        .brand {
+            text-align: center;
+            margin-bottom: 32px;
+        }
+        
+        .brand-icon {
+            width: 56px;
+            height: 56px;
+            background: linear-gradient(135deg, #2563eb, #1d4ed8);
+            border-radius: 16px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            color: white;
+            margin-bottom: 14px;
+            box-shadow: 0 8px 30px rgba(37, 99, 235, 0.25);
+            animation: float 4s ease-in-out infinite;
+        }
+        
+        .brand h1 {
+            font-size: 1.5rem;
+            font-weight: 800;
+            color: #1e293b;
+            letter-spacing: 2px;
+        }
+        
+        .verify-card {
+            background: white;
+            border-radius: 16px;
+            padding: 36px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.06), 0 1px 3px rgba(0, 0, 0, 0.04);
+            border: 1px solid #e2e8f0;
+        }
+        
+        .back-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            color: #64748b;
+            text-decoration: none;
+            font-size: 0.82rem;
+            font-weight: 500;
+            margin-bottom: 24px;
+            transition: all 0.2s ease;
+        }
+        
+        .back-link:hover {
+            color: #2563eb;
+            gap: 8px;
+        }
+        
+        .back-link i {
+            font-size: 0.75rem;
+        }
+        
+        .back-link:hover i {
+            transform: translateX(-3px);
+        }
+        
+        .verify-title {
+            text-align: center;
+            margin-bottom: 28px;
+        }
+        
+        .verify-title h2 {
+            font-size: 1.2rem;
+            font-weight: 700;
+            color: #1e293b;
+            margin-bottom: 6px;
+        }
+        
+        .verify-title .chip {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 4px 14px;
+            border-radius: 20px;
+            font-size: 0.72rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            background: rgba(37, 99, 235, 0.08);
+            color: #2563eb;
+        }
+        
+        .email-display {
+            text-align: center;
+            margin-bottom: 24px;
+            padding: 14px;
+            background: #f0f5ff;
+            border-radius: 10px;
+            border: 1px solid #dbeafe;
+        }
+        
+        .email-display p {
+            font-size: 0.82rem;
+            color: #64748b;
+            margin-bottom: 4px;
+        }
+        
+        .email-display strong {
+            font-size: 0.95rem;
+            color: #1e293b;
+        }
+        
+        .flash {
+            padding: 12px 16px;
+            margin-bottom: 20px;
+            border-radius: 10px;
+            font-size: 0.85rem;
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            animation: shake 0.4s ease;
+        }
+        
+        .flash.error {
+            background: #fef2f2;
+            color: #991b1b;
+            border: 1px solid #fecaca;
+        }
+        
+        .flash.success {
+            background: #f0fdf4;
+            color: #166534;
+            border: 1px solid #bbf7d0;
+        }
+        
+        .flash.info {
+            background: #eff6ff;
+            color: #1e40af;
+            border: 1px solid #bfdbfe;
+        }
+        
+        .flash.warning {
+            background: #fffbeb;
+            color: #92400e;
+            border: 1px solid #fde68a;
+        }
+        
+        .form-group {
+            margin-bottom: 20px;
+        }
+        
+        .form-group label {
+            display: block;
+            font-size: 0.82rem;
+            font-weight: 600;
+            color: #475569;
+            margin-bottom: 8px;
+        }
+        
+        .code-input {
+            width: 100%;
+            padding: 16px;
+            border: 2px solid #e2e8f0;
+            border-radius: 10px;
+            font-family: inherit;
+            font-size: 1.8rem;
+            font-weight: 700;
+            color: #1e293b;
+            background: #f8fafc;
+            text-align: center;
+            letter-spacing: 12px;
+            transition: all 0.2s ease;
+            outline: none;
+        }
+        
+        .code-input::placeholder {
+            color: #cbd5e1;
+            font-size: 1rem;
+            letter-spacing: 4px;
+        }
+        
+        .code-input:focus {
+            border-color: #2563eb;
+            background: white;
+            box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.08);
+        }
+        
+        .submit-btn {
+            width: 100%;
+            padding: 14px;
+            border: none;
+            border-radius: 10px;
+            background: linear-gradient(135deg, #2563eb, #1d4ed8);
+            color: white;
+            font-family: inherit;
+            font-size: 0.95rem;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            margin-top: 8px;
+            box-shadow: 0 4px 15px rgba(37, 99, 235, 0.25);
+        }
+        
+        .submit-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(37, 99, 235, 0.35);
+        }
+        
+        .submit-btn:active {
+            transform: translateY(0);
+        }
+        
+        .verify-footer {
+            text-align: center;
+            margin-top: 22px;
+            font-size: 0.85rem;
+            color: #64748b;
+        }
+        
+        .verify-footer a {
+            color: #2563eb;
+            text-decoration: none;
+            font-weight: 600;
+        }
+        
+        .verify-footer a:hover {
+            color: #1d4ed8;
+            text-decoration: underline;
+        }
+        
+        @media (max-width:480px) {
+            .verify-card {
+                padding: 28px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="verify-container">
+        <div class="brand">
+            <div class="brand-icon"><i class="fas fa-shield-halved"></i></div>
+            <h1>SURVEILLANCE SYSTEM</h1>
+        </div>
+
+        <div class="verify-card">
+            <a href="{{ url_for('signup') }}" class="back-link">
+                <i class="fas fa-arrow-left"></i> Back to Signup
+            </a>
+
+            <div class="verify-title">
+                <h2>Verify Your Email</h2>
+                <span class="chip">
+                    <i class="fas fa-envelope-circle-check"></i> Email Verification
+                </span>
+            </div>
+
+            <div class="email-display">
+                <p>We sent a 6-digit code to</p>
+                <strong>{{ email }}</strong>
+            </div>
+
+            {% with messages = get_flashed_messages(with_categories=true) %} {% if messages %} {% for category, message in messages %}
+            <div class="flash {{ category }}">
+                <i class="fas {% if category == 'error' %}fa-circle-exclamation{% elif category == 'warning' %}fa-triangle-exclamation{% else %}fa-circle-check{% endif %}"></i> {{ message }}
+            </div>
+            {% endfor %} {% endif %} {% endwith %}
+
+            <form method="POST" action="{{ url_for('verify_email') }}">
+                <input type="hidden" name="email" value="{{ email }}">
+
+                <div class="form-group">
+                    <label>Enter Verification Code</label>
+                    <input type="text" name="code" class="code-input" placeholder="------" maxlength="6" pattern="[0-9]{6}" required autocomplete="off">
+                </div>
+
+                <button type="submit" class="submit-btn">
+                    <i class="fas fa-circle-check"></i>&nbsp; Verify & Submit
+                </button>
+            </form>
+
+            <p class="verify-footer">
+                Didn't receive the code?
+                <a href="{{ url_for('signup') }}">Try signing up again</a>
+            </p>
+        </div>
+    </div>
+</body>
+
+</html>

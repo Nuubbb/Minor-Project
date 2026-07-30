@@ -9,13 +9,12 @@ from email.message import EmailMessage
 from datetime import datetime
 from pathlib import Path
 
-SENDER   = "surveillancesystem077@gmail.com"          # the Gmail that sends alerts
-APP_PASS = "abfh myyc kugr njhk"    # Gmail App Password (no spaces)
-SYSTEM_NAME = "Surveillance System"       # shows as the sender NAME (not your raw email)
+SENDER = "surveillancesystem077@gmail.com"
+APP_PASS = "abfh myyc kugr njhk"
+SYSTEM_NAME = "Surveillance System"
 
-# where your Flask app is reachable. Use your LAN IP (e.g. http://192.168.1.5:5000)
-# if you want to click the button from a PHONE on the same wifi.
-BASE_URL = "http://192.168.18.4:5001"DISMISS_SECRET = "kec_surveillance_2026"  # MUST match the value in app.py
+BASE_URL = "http://192.168.18.4:5001"
+DISMISS_SECRET = "kec_surveillance_2026"
 
 
 def send_email_alert(to_email, message, alert_id):
@@ -30,7 +29,6 @@ def send_email_alert(to_email, message, alert_id):
         msg["From"] = f"{SYSTEM_NAME} <{SENDER}>"
         msg["To"] = to_email
 
-        # plain-text fallback (includes the link too)
         msg.set_content(
             f"SECURITY ALERT\n\n{message}\n\n"
             f"Alert ID: {alert_id}\nTime: {time_str}\n\n"
@@ -38,7 +36,6 @@ def send_email_alert(to_email, message, alert_id):
             f"-- Automated notification, {SYSTEM_NAME}"
         )
 
-        # HTML version with the one-click button
         html = f"""
         <div style="font-family:Arial,Helvetica,sans-serif; max-width:480px; margin:auto;
                     border:1px solid #e0e0e0; border-radius:10px; overflow:hidden;">
@@ -82,11 +79,7 @@ def send_email_alert(to_email, message, alert_id):
 
 
 def send_community_alert(alert_id, alert_type, message, confidence, timestamp, screenshot_path, location, recipients, reported_by=None):
-    """Email every community member (dummy neighbors/residents) with the
-    captured screenshot attached and a link to the event location on a map.
-    Sends one-by-one so a single bad address doesn't block the rest.
-    Returns (sent_count, failed_count).
-    """
+    """Email every community member with the captured screenshot attached."""
     maps_url = f"https://www.google.com/maps?q={location['lat']},{location['lng']}"
     screenshot_bytes = None
     if screenshot_path and Path(screenshot_path).exists():
@@ -125,16 +118,10 @@ def send_community_alert(alert_id, alert_type, message, confidence, timestamp, s
     if not to_emails:
         return 0, 0
 
-    # The content is identical for every recipient (no per-recipient
-    # personalization, unlike the single-operator alert's dismiss link), so
-    # this is sent as ONE message with multiple envelope recipients instead
-    # of one send_message() per recipient. Each send_message() round trip to
-    # Gmail is ~1.5s regardless of connection reuse, so looping N times was
-    # the real bottleneck, not the connection/login (~3.5s, one-time).
     msg = EmailMessage()
     msg["Subject"] = f"Community Alert: {message or alert_type} [ID:{alert_id}]"
     msg["From"] = f"{SYSTEM_NAME} <{SENDER}>"
-    msg["To"] = "Community Members"  # display-only; real recipients passed via to_addrs below
+    msg["To"] = "Community Members"
     msg.set_content(
         f"COMMUNITY SAFETY ALERT\n\n{message or alert_type}\n\n"
         f"Confidence: {confidence * 100:.0f}%\nTime: {timestamp}\n"
@@ -160,3 +147,54 @@ def send_community_alert(alert_id, alert_type, message, confidence, timestamp, s
         sent, failed = 0, len(to_emails)
 
     return sent, failed
+
+
+def send_verification_code(to_email, code):
+    """Send a 6-digit verification code to confirm email ownership."""
+    if not to_email:
+        return False
+    try:
+        msg = EmailMessage()
+        msg["Subject"] = f"Your Verification Code: {code}"
+        msg["From"] = f"{SYSTEM_NAME} <{SENDER}>"
+        msg["To"] = to_email
+
+        msg.set_content(
+            f"Your verification code is: {code}\n\n"
+            f"Enter this code to complete your registration.\n"
+            f"This code expires in 10 minutes.\n\n"
+            f"-- {SYSTEM_NAME}"
+        )
+
+        html = f"""
+        <div style="font-family:Arial,Helvetica,sans-serif; max-width:480px; margin:auto;
+                    border:1px solid #e0e0e0; border-radius:10px; overflow:hidden;">
+          <div style="background:#2563eb; color:#ffffff; padding:16px 22px;">
+            <h2 style="margin:0; font-size:18px;">&#128274;&nbsp; Email Verification</h2>
+          </div>
+          <div style="padding:22px; color:#202124; text-align:center;">
+            <p style="font-size:15px;">Your verification code is:</p>
+            <div style="font-size:36px; font-weight:bold; letter-spacing:8px;
+                        color:#2563eb; padding:20px; background:#f0f5ff;
+                        border-radius:10px; margin:16px 0;">{code}</div>
+            <p style="font-size:13px; color:#5f6368;">
+              Enter this code to complete your registration.<br>
+              This code expires in 10 minutes.
+            </p>
+          </div>
+          <div style="background:#f8f9fa; padding:12px 20px; font-size:12px;
+                      color:#9aa0a6; text-align:center;">
+            Automated notification &middot; {SYSTEM_NAME}
+          </div>
+        </div>
+        """
+        msg.add_alternative(html, subtype="html")
+
+        with smtplib.SMTP_SSL("smtp.gmail.com", 465) as server:
+            server.login(SENDER, APP_PASS)
+            server.send_message(msg)
+        print("[EMAIL] verification code sent to", to_email)
+        return True
+    except Exception as e:
+        print("[EMAIL] verification failed:", e)
+        return False

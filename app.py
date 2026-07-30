@@ -1,12 +1,14 @@
 import sqlite3
+import random
+from email_alert import send_verification_code
 from datetime import datetime
-from flask import Flask, render_template, request, redirect, url_for, session, Response, flash, render_template_string, send_file
+from flask import Flask, render_template, request, redirect, url_for, session, Response, flash, render_template_string, send_file, jsonify
 from werkzeug.security import generate_password_hash, check_password_hash
 
 from config import SECRET_KEY, SCREENSHOT_DIR
 from database import (init_db, mark_false_alarm, DATABASE,
                       init_events, add_event, delete_user, delete_event,
-                      get_device_location)
+                      get_device_location, update_device_location)
 from detection import generate_frames
 from api import api_bp
 
@@ -83,20 +85,71 @@ def signup():
                 flash("Username already exists.", "error")
                 return redirect(url_for('signup'))
 
+            cursor.execute("SELECT * FROM users WHERE email=?", (email,))
+            if cursor.fetchone():
+                flash("Email already registered.", "error")
+                return redirect(url_for('signup'))
+
+            code = str(random.randint(100000, 999999))
             hashed_pw = generate_password_hash(password)
+
+            if not send_verification_code(email, code):
+                flash("Could not send verification email. Please check your email address.", "error")
+                return redirect(url_for('signup'))
+
             cursor.execute(
-                "INSERT INTO users (username, password, email, role, status) VALUES (?, ?, ?, 'Operator', 'pending')",
-                (username, hashed_pw, email)
+                "INSERT INTO email_verification (email, code, username, password_hash, created_at) VALUES (?, ?, ?, ?, ?)",
+                (email, code, username, hashed_pw, datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
             )
             conn.commit()
 
-        flash("Account created! Your request is pending admin approval.", "info")
-        return redirect(url_for('index'))
-       
+        flash("Verification code sent to your email.", "success")
+        return redirect(url_for('verify_email', email=email))
 
     return render_template('signup.html')
 
 
+@app.route('/verify_email', methods=['GET', 'POST'])
+def verify_email():
+    email = request.args.get('email') or request.form.get('email', '')
+
+    if request.method == 'POST':
+        code = request.form['code']
+
+        with sqlite3.connect(DATABASE) as conn:
+            conn.row_factory = sqlite3.Row
+            cursor = conn.cursor()
+
+            cursor.execute(
+                "SELECT * FROM email_verification WHERE email=? AND code=? AND used=0 ORDER BY id DESC LIMIT 1",
+                (email, code)
+            )
+            record = cursor.fetchone()
+
+            if not record:
+                flash("Invalid verification code.", "error")
+                return render_template('verify_email.html', email=email)
+
+            # Check if code is expired (10 minutes)
+            created = datetime.strptime(record['created_at'], "%Y-%m-%d %H:%M:%S")
+            if (datetime.now() - created).total_seconds() > 600:
+                flash("Verification code expired. Please sign up again.", "error")
+                return redirect(url_for('signup'))
+
+            # Mark code as used
+            cursor.execute("UPDATE email_verification SET used=1 WHERE id=?", (record['id'],))
+
+            # Create the actual user account
+            cursor.execute(
+                "INSERT INTO users (username, password, email, role, status) VALUES (?, ?, ?, 'Operator', 'pending')",
+                (record['username'], record['password_hash'], record['email'])
+            )
+            conn.commit()
+
+        flash("Email verified! Your account is pending admin approval.", "success")
+        return redirect(url_for('index'))
+
+    return render_template('verify_email.html', email=email)
 @app.route('/dashboard')
 def dashboard():
     if 'username' not in session:
@@ -111,16 +164,16 @@ def dashboard():
         cursor.execute("SELECT * FROM alerts WHERE timestamp >= ? ORDER BY timestamp DESC", (login_time,))
         alerts = cursor.fetchall()
 
-        # NEW: threat type counts for charts
+        # Threat type counts for charts
         cursor.execute("""
-            SELECT alert_type, COUNT(*) as cnt, 
+            SELECT alert_type, COUNT(*) as cnt,
                    SUM(CASE WHEN is_false_alarm = 0 THEN 1 ELSE 0 END) as active_cnt
-            FROM alerts 
+            FROM alerts
             GROUP BY alert_type
         """)
         threat_stats = [dict(row) for row in cursor.fetchall()]
 
-        # NEW: alerts per day for line chart (last 7 days)
+        # Alerts per day for line chart (last 7 days)
         cursor.execute("""
             SELECT DATE(timestamp) as day, COUNT(*) as cnt
             FROM alerts
@@ -131,9 +184,11 @@ def dashboard():
         daily_stats = [dict(row) for row in cursor.fetchall()]
         daily_stats.reverse()
 
-    return render_template('dashboard.html', username=session['username'], 
+    return render_template('dashboard.html', username=session['username'],
                           role=session['role'], alerts=alerts, run_live=run_live,
                           threat_stats=threat_stats, daily_stats=daily_stats)
+
+
 @app.route('/video_feed')
 def video_feed():
     if 'username' not in session:
@@ -171,8 +226,7 @@ def get_alerts():
         </td>
         <td>
             {% set atype = alert.alert_type|lower %}
-            <span class="alert-type-badge {% if 'violen' in atype %}violence{% elif 'weapon' in atype or 'gun' in atype or 'knife' in atype %}weapon{% elif 'crowd' in atype %}crowd{% elif 'intrusion' in atype %}intrusion{% else %}default{% endif %}"
-                  style="display:inline-flex; align-items:center; gap:6px; padding:4px 10px; border-radius:6px; font-weight:600; font-size:0.75rem; text-transform:capitalize;
+            <span style="display:inline-flex; align-items:center; gap:6px; padding:4px 10px; border-radius:6px; font-weight:600; font-size:0.75rem; text-transform:capitalize;
                   {% if 'violen' in atype %}background:rgba(220,38,38,0.1); color:#dc2626;
                   {% elif 'weapon' in atype or 'gun' in atype or 'knife' in atype %}background:rgba(245,158,11,0.1); color:#d97706;
                   {% elif 'crowd' in atype %}background:rgba(14,165,233,0.1); color:#0284c7;
@@ -195,9 +249,9 @@ def get_alerts():
         </td>
         <td>
             {% if alert.is_false_alarm %}
-                <span class="status-dismissed" style="color:#94a3b8; font-weight:600; font-size:0.78rem;"><i class="fas fa-check"></i> Dismissed</span>
+                <span style="color:#94a3b8; font-weight:600; font-size:0.78rem;"><i class="fas fa-check"></i> Dismissed</span>
             {% else %}
-                <span class="status-active" style="color:#dc2626; font-weight:700; font-size:0.78rem; display:flex; align-items:center; gap:4px;">
+                <span style="color:#dc2626; font-weight:700; font-size:0.78rem; display:flex; align-items:center; gap:4px;">
                     <i class="fas fa-circle" style="font-size:0.4rem;"></i> Active
                 </span>
             {% endif %}
@@ -364,8 +418,6 @@ def add_event_route():
 
 @app.route('/message_packets_view')
 def message_packets_view():
-    """Dummy/dev-only page to eyeball the message-packet prototype (screenshot +
-    placeholder location + recipients) before the real screenshot/map UI is ready."""
     if 'username' not in session:
         return redirect(url_for('index'))
 
@@ -394,6 +446,19 @@ def screenshot_view(alert_id):
     if not path.exists():
         return "Not found", 404
     return send_file(path, mimetype='image/jpeg')
+
+
+@app.route('/update_location', methods=['POST'])
+def update_location():
+    if 'username' not in session:
+        return "Unauthorized", 401
+    data = request.get_json(silent=True) or {}
+    lat = data.get('lat')
+    lng = data.get('lng')
+    if lat is None or lng is None:
+        return "Missing coordinates", 400
+    update_device_location("Camera — Live GPS", float(lat), float(lng))
+    return "OK", 200
 
 
 @app.route('/logout')

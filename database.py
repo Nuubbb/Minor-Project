@@ -156,7 +156,18 @@ def init_db():
             resolved_at TEXT
         )
         ''')
-
+# 9. Email verification codes (temporary, used during signup)
+        cursor.execute('''
+        CREATE TABLE IF NOT EXISTS email_verification (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            email TEXT NOT NULL,
+            code TEXT NOT NULL,
+            username TEXT NOT NULL,
+            password_hash TEXT NOT NULL,
+            created_at TEXT NOT NULL,
+            used INTEGER DEFAULT 0
+        )
+        ''')
     conn.commit()
 
 
