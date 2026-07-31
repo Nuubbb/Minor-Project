@@ -113,9 +113,9 @@ def signup():
             )
             conn.commit()
 
-flash("If this email exists, you'll receive a verification code shortly.", "info")        return redirect(url_for('verify_email', email=email))
-
-    return render_template('signup.html')
+            flash("If this email exists, you'll receive a verification code shortly.", "info")
+            return redirect(url_for('verify_email', email=email))
+        return render_template('signup.html')
 
 
 @app.route('/verify_email', methods=['GET', 'POST'])
@@ -228,7 +228,7 @@ def get_alerts():
         cursor.execute("SELECT * FROM alerts WHERE timestamp >= ? ORDER BY timestamp DESC", (login_time,))
         alerts = cursor.fetchall()
     row_template = """
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    
     {% for alert in alerts %}
     <tr>
         <td style="color:#94a3b8; font-size:0.75rem; white-space:nowrap;">

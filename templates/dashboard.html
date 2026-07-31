@@ -1187,18 +1187,20 @@
             });
         }, 3000);
 
-        // Initial counts
+       // Initial counts
         (function() {
-            let d = 0;
-            document.querySelectorAll('.status-dismissed').forEach(() => d++);
-            document.getElementById('stat-dismissed').textContent = d;
-            document.getElementById('stat-active').textContent = {
-                {
-                    alerts | length
+            let total = 0, active = 0, dismissed = 0;
+            document.querySelectorAll('#alerts-tbody tr').forEach(r => {
+                if (r.querySelector('td')) {
+                    total++;
+                    if (r.innerHTML.includes('Dismissed')) dismissed++;
+                    else active++;
                 }
-            } - d;
+            });
+            document.getElementById('stat-total').textContent = total;
+            document.getElementById('stat-active').textContent = active;
+            document.getElementById('stat-dismissed').textContent = dismissed;
         })();
-
         // ===== GPS LOCATION =====
         (function() {
             const badge = document.getElementById('gps-badge');
