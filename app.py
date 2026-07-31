@@ -244,58 +244,52 @@ def get_alerts():
         cursor.execute("SELECT * FROM alerts WHERE timestamp >= ? ORDER BY timestamp DESC", (login_time,))
         alerts = cursor.fetchall()
     row_template = """
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
     {% for alert in alerts %}
     <tr>
-        <td style="color:#94a3b8; font-size:0.75rem; white-space:nowrap;">
+        <td style="color:#94a3b8; font-size:0.72rem; white-space:nowrap;">
             {{ alert.timestamp.split()[1] if alert.timestamp else '' }}
         </td>
         <td>
             {% set atype = alert.alert_type|lower %}
-            <span style="display:inline-flex; align-items:center; gap:6px; padding:4px 10px; border-radius:6px; font-weight:600; font-size:0.75rem; text-transform:capitalize;
+            <span style="display:inline-block; padding:3px 8px; border-radius:4px; font-weight:600; font-size:0.72rem; text-transform:capitalize;
                   {% if 'violen' in atype %}background:rgba(220,38,38,0.1); color:#dc2626;
                   {% elif 'weapon' in atype or 'gun' in atype or 'knife' in atype %}background:rgba(245,158,11,0.1); color:#d97706;
                   {% elif 'crowd' in atype %}background:rgba(14,165,233,0.1); color:#0284c7;
                   {% elif 'intrusion' in atype %}background:rgba(124,58,237,0.1); color:#7c3aed;
                   {% else %}background:#f1f5f9; color:#475569;{% endif %}">
-                <i class="fas {% if 'violen' in atype %}fa-hand-fist{% elif 'weapon' in atype or 'gun' in atype or 'knife' in atype %}fa-crosshairs{% elif 'crowd' in atype %}fa-people-group{% elif 'intrusion' in atype %}fa-person-walking{% else %}fa-triangle-exclamation{% endif %}"></i>
                 {{ alert.alert_type.replace('-', ' ') }}
             </span>
         </td>
         <td>
             {% set conf = (alert.confidence * 100)|int %}
-            <div style="display:flex; align-items:center; gap:6px;">
-                <span style="font-size:0.78rem; font-weight:600; min-width:32px;">{{ conf }}%</span>
-                <div style="flex:1; height:4px; background:#e2e8f0; border-radius:2px; overflow:hidden;">
+            <div style="display:flex; align-items:center; gap:5px;">
+                <span style="font-size:0.75rem; font-weight:600; min-width:28px;">{{ conf }}%</span>
+                <div style="flex:1; height:3px; background:#e2e8f0; border-radius:2px; overflow:hidden;">
                     <div style="height:100%; border-radius:2px; width:{{ conf }}%;
-                        {% if conf >= 80 %}background:#dc2626;{% elif conf >= 50 %}background:#f59e0b;{% else %}background:#16a34a;{% endif %}
-                        transition:width 0.8s ease;"></div>
+                        {% if conf >= 80 %}background:#dc2626;{% elif conf >= 50 %}background:#f59e0b;{% else %}background:#16a34a;{% endif %}"></div>
                 </div>
             </div>
         </td>
         <td>
             {% if alert.is_false_alarm %}
-                <span style="color:#94a3b8; font-weight:600; font-size:0.78rem;"><i class="fas fa-check"></i> Dismissed</span>
+                <span style="color:#94a3b8; font-weight:600; font-size:0.75rem;">Dismissed</span>
             {% else %}
-                <span style="color:#dc2626; font-weight:700; font-size:0.78rem; display:flex; align-items:center; gap:4px;">
-                    <i class="fas fa-circle" style="font-size:0.4rem;"></i> Active
-                </span>
+                <span style="color:#dc2626; font-weight:700; font-size:0.75rem;">Active</span>
             {% endif %}
         </td>
         <td>
             {% if not alert.is_false_alarm %}
             <form action="{{ url_for('flag_false_alarm', alert_id=alert.id) }}" method="POST" style="margin:0;">
-                <button type="submit" style="padding:5px 12px; border-radius:6px; border:1px solid #e2e8f0; background:#f8fafc; color:#475569; font-size:0.72rem; font-weight:600; cursor:pointer;">Dismiss</button>
+                <button type="submit" style="padding:4px 10px; border-radius:4px; border:1px solid #e2e8f0; background:#f8fafc; color:#475569; font-size:0.7rem; font-weight:600; cursor:pointer;">Dismiss</button>
             </form>
             {% endif %}
         </td>
     </tr>
     {% else %}
     <tr>
-        <td colspan="5">
-            <div style="text-align:center; padding:50px 20px; color:#94a3b8;">
-                <i class="fas fa-shield-check" style="font-size:2.5rem; opacity:0.3; margin-bottom:12px; display:block;"></i>
-                <p>No security events detected</p>
-            </div>
+        <td colspan="5" style="text-align:center; padding:40px 20px; color:#94a3b8; font-size:0.85rem;">
+            No security events detected
         </td>
     </tr>
     {% endfor %}
@@ -471,6 +465,66 @@ def screenshot_view(alert_id):
     if not path.exists():
         return "Not found", 404
     return send_file(path, mimetype='image/jpeg')
+
+@app.route('/api/chart_data')
+def chart_data():
+    if 'username' not in session:
+        return jsonify({"error": "Unauthorized"}), 401
+    with sqlite3.connect(DATABASE) as conn:
+        conn.row_factory = sqlite3.Row
+        cursor = conn.cursor()
+        # Per-type daily counts for last 7 days
+        cursor.execute("""
+            SELECT DATE(timestamp) as day, alert_type, COUNT(*) as cnt
+            FROM alerts
+            GROUP BY DATE(timestamp), alert_type
+            ORDER BY day ASC
+        """)
+        raw = cursor.fetchall()
+        # Total per type
+        cursor.execute("SELECT alert_type, COUNT(*) as cnt FROM alerts GROUP BY alert_type ORDER BY cnt DESC")
+        totals = [{"type": r["alert_type"], "count": r["cnt"]} for r in cursor.fetchall()]
+        # Total alerts
+        total_all = sum(t["count"] for t in totals)
+    # Build per-day-per-type structure
+    days = sorted(set(r["day"] for r in raw))[-7:]
+    types = sorted(set(r["alert_type"] for r in raw))
+    series = {}
+    for t in types:
+        series[t] = []
+        for d in days:
+            found = [r["cnt"] for r in raw if r["day"] == d and r["alert_type"] == t]
+            series[t].append(found[0] if found else 0)
+    # Generate suggestions
+    suggestions = []
+    if total_all == 0:
+        suggestions.append({"level": "info", "text": "No alerts recorded yet. Start monitoring to see insights."})
+    else:
+        top = totals[0] if totals else None
+        if top:
+            pct = round(top["count"] / total_all * 100)
+            name = top["type"].replace("-", " ").title()
+            suggestions.append({"level": "warning", "text": name + " accounts for " + str(pct) + "% of all alerts (" + str(top["count"]) + " out of " + str(total_all) + "). Consider prioritizing this threat type."})
+        violence_count = sum(t["count"] for t in totals if "violen" in t["type"].lower())
+        weapon_count = sum(t["count"] for t in totals if "weapon" in t["type"].lower() or "gun" in t["type"].lower() or "knife" in t["type"].lower())
+        crowd_count = sum(t["count"] for t in totals if "crowd" in t["type"].lower())
+        loiter_count = sum(t["count"] for t in totals if "loiter" in t["type"].lower())
+        if violence_count > 5:
+            suggestions.append({"level": "danger", "text": "High violence activity detected (" + str(violence_count) + " incidents). Review camera placement and ensure adequate coverage in hotspot areas."})
+        if weapon_count > 0:
+            suggestions.append({"level": "danger", "text": str(weapon_count) + " weapon detection(s) logged. Verify each alert and notify security personnel immediately."})
+        if crowd_count > 3:
+            suggestions.append({"level": "info", "text": "Frequent crowd alerts (" + str(crowd_count) + "). If these are during events, schedule them in the Events page to reduce false alarms."})
+        if loiter_count > 2:
+            suggestions.append({"level": "warning", "text": "Loitering detected " + str(loiter_count) + " times. Consider adjusting after-hours monitoring or dwell-time thresholds in Settings."})
+        if len(days) >= 2:
+            today_total = sum(series[t][-1] for t in types) if days else 0
+            yesterday_total = sum(series[t][-2] for t in types) if len(days) >= 2 else 0
+            if today_total > yesterday_total * 1.5 and yesterday_total > 0:
+                suggestions.append({"level": "warning", "text": "Alert volume today (" + str(today_total) + ") is significantly higher than yesterday (" + str(yesterday_total) + "). Investigate possible environmental changes."})
+            elif today_total < yesterday_total * 0.5 and yesterday_total > 3:
+                suggestions.append({"level": "success", "text": "Alert volume has dropped compared to yesterday. Current measures appear to be working."})
+    return jsonify({"days": days, "series": series, "totals": totals, "total": total_all, "suggestions": suggestions})
 
 
 @app.route('/update_location', methods=['POST'])

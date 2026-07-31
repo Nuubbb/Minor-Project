@@ -19,7 +19,7 @@
          :root {
             --bg-primary: #f4f6f9;
             --bg-card: #ffffff;
-            --sidebar-bg: #1e293b;
+            --sidebar-bg: #000000;
             --accent: #2563eb;
             --accent-glow: rgba(37, 99, 235, 0.12);
             --danger: #dc2626;
@@ -30,7 +30,7 @@
             --warning-glow: rgba(245, 158, 11, 0.1);
             --info: #0ea5e9;
             --info-glow: rgba(14, 165, 233, 0.1);
-            --text-primary: #1e293b;
+            --text-primary: #000000;
             --text-secondary: #475569;
             --text-muted: #94a3b8;
             --border: #e2e8f0;
@@ -106,14 +106,14 @@
         .brand-icon {
             width: 44px;
             height: 44px;
-            background: linear-gradient(135deg, var(--accent), #1d4ed8);
+            background: rgba(255,255,255,0.15);
             border-radius: 12px;
             display: flex;
             align-items: center;
             justify-content: center;
             font-size: 20px;
             color: white;
-            box-shadow: 0 4px 15px rgba(37, 99, 235, 0.3);
+            box-shadow:none;
         }
         
         .sidebar-brand h1 {
@@ -174,7 +174,7 @@
         
         .nav-item.active {
             background: rgba(37, 99, 235, 0.15);
-            color: #60a5fa;
+            color: rgba(255,255,255,0.5);
             font-weight: 600;
         }
         
@@ -186,13 +186,12 @@
             transform: translateY(-50%);
             width: 3px;
             height: 60%;
-            background: var(--accent);
-            border-radius: 0 3px 3px 0;
+            background:#ffffff;border-radius:0 3px 3px 0;
         }
         
         .sidebar-footer {
             padding: 16px;
-            border-top: 1px solid rgba(255, 255, 255, 0.08);
+            border-top:none;
         }
         
         .user-card {
@@ -201,7 +200,7 @@
             gap: 12px;
             padding: 10px 12px;
             border-radius: 10px;
-            background: rgba(255, 255, 255, 0.04);
+            background:transparent;
             transition: var(--transition);
         }
         
@@ -213,7 +212,7 @@
             width: 38px;
             height: 38px;
             border-radius: 10px;
-            background: linear-gradient(135deg, var(--accent), var(--info));
+            background: rgba(255,255,255,0.15);
             display: flex;
             align-items: center;
             justify-content: center;
@@ -230,7 +229,7 @@
         
         .user-info .role-badge {
             font-size: 0.65rem;
-            color: #60a5fa;
+            color: rgba(255,255,255,0.5);
             font-weight: 600;
             text-transform: uppercase;
             letter-spacing: 0.5px;
@@ -243,9 +242,7 @@
             width: 100%;
             padding: 10px 16px;
             border-radius: 10px;
-            border: 1px solid rgba(239, 68, 68, 0.2);
-            background: rgba(239, 68, 68, 0.06);
-            color: #f87171;
+            border:none;background:transparent;color:rgba(255,255,255,0.4);
             font-size: 0.85rem;
             font-weight: 600;
             cursor: pointer;
@@ -255,8 +252,8 @@
         }
         
         .logout-btn:hover {
-            background: rgba(239, 68, 68, 0.12);
-            border-color: rgba(239, 68, 68, 0.3);
+            background:rgba(255,255,255,0.1);
+            color:#fff;
         }
         /* === MAIN === */
         
@@ -709,7 +706,7 @@
         <!-- SIDEBAR -->
         <aside class="sidebar">
             <div class="sidebar-brand">
-                <div class="brand-icon"><i class="fas fa-shield-halved"></i></div>
+                <img src="{{ url_for('static', filename='logo.png') }}" alt="Logo" style="width:40px;height:40px;border-radius:10px;object-fit:contain;">
                 <div>
                     <h1>SURVEILLANCE</h1>
                     <small>Monitoring System</small>
@@ -777,7 +774,7 @@
                     <div class="stat-card animate-in">
                         <div class="stat-header">
                             <span>Total Packets</span>
-                            <div class="stat-icon"><i class="fas fa-envelope"></i></div>
+                            
                         </div>
                         <div class="stat-value">{{ packets|length }}</div>
                         <div class="stat-sub">With captured screenshots</div>
@@ -785,7 +782,7 @@
                     <div class="stat-card animate-in">
                         <div class="stat-header">
                             <span>Active Alerts</span>
-                            <div class="stat-icon"><i class="fas fa-exclamation-triangle"></i></div>
+                            
                         </div>
                         <div class="stat-value">{{ active_packets }}</div>
                         <div class="stat-sub">Unresolved events</div>
@@ -793,7 +790,7 @@
                     <div class="stat-card animate-in">
                         <div class="stat-header">
                             <span>Dismissed</span>
-                            <div class="stat-icon"><i class="fas fa-check-circle"></i></div>
+                            
                         </div>
                         <div class="stat-value">{{ dismissed_packets }}</div>
                         <div class="stat-sub">Marked as false alarms</div>
@@ -823,7 +820,6 @@
                             <div class="packet-title-row">
                                 {% set atype = p.alert_type|lower %}
                                 <span class="alert-type-badge {% if 'violen' in atype %}violence{% elif 'weapon' in atype or 'gun' in atype or 'knife' in atype %}weapon{% elif 'crowd' in atype %}crowd{% elif 'intrusion' in atype %}intrusion{% else %}default{% endif %}">
-                                    <i class="fas {% if 'violen' in atype %}fa-hand-fist{% elif 'weapon' in atype or 'gun' in atype or 'knife' in atype %}fa-crosshairs{% elif 'crowd' in atype %}fa-people-group{% elif 'intrusion' in atype %}fa-person-walking{% else %}fa-triangle-exclamation{% endif %}"></i>
                                     {{ p.alert_type.replace('-', ' ') }}
                                 </span>
                                 <span style="font-size:0.75rem; color:var(--text-muted);">Alert #{{ p.id }}</span>

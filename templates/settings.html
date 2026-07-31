@@ -6,7 +6,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Settings – Surveillance System</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
     <style>
         *,
         *::before,
@@ -19,13 +18,13 @@
          :root {
             --bg-primary: #f4f6f9;
             --bg-card: #ffffff;
-            --sidebar-bg: #1e293b;
+            --sidebar-bg: #f8fafc;
             --accent: #2563eb;
             --accent-glow: rgba(37, 99, 235, 0.12);
             --danger: #dc2626;
             --success: #16a34a;
             --warning: #f59e0b;
-            --text-primary: #1e293b;
+            --text-primary: #000000;
             --text-secondary: #475569;
             --text-muted: #94a3b8;
             --border: #e2e8f0;
@@ -50,17 +49,6 @@
             to {
                 opacity: 1;
                 transform: translateY(0)
-            }
-        }
-        
-        @keyframes slideInLeft {
-            from {
-                opacity: 0;
-                transform: translateX(-30px)
-            }
-            to {
-                opacity: 1;
-                transform: translateX(0)
             }
         }
         
@@ -99,41 +87,24 @@
             left: 0;
             bottom: 0;
             z-index: 100;
-            animation: slideInLeft 0.5s ease-out;
-            box-shadow: 2px 0 10px rgba(0, 0, 0, 0.1)
+            border-right: 1px solid var(--border)
         }
         
         .sidebar-brand {
             padding: 24px 20px;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-            display: flex;
-            align-items: center;
-            gap: 14px
-        }
-        
-        .brand-icon {
-            width: 44px;
-            height: 44px;
-            background: linear-gradient(135deg, var(--accent), #1d4ed8);
-            border-radius: 12px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 20px;
-            color: white;
-            box-shadow: 0 4px 15px rgba(37, 99, 235, 0.3)
+            border-bottom: 1px solid var(--border)
         }
         
         .sidebar-brand h1 {
-            font-size: 1.2rem;
+            font-size: 1.1rem;
             font-weight: 800;
             letter-spacing: 1.5px;
-            color: #fff
+            color: var(--text-primary)
         }
         
         .sidebar-brand small {
             font-size: 0.65rem;
-            color: #64748b;
+            color: var(--text-muted);
             letter-spacing: 0.5px;
             display: block;
             margin-top: 2px
@@ -148,7 +119,7 @@
         .nav-label {
             font-size: 0.65rem;
             font-weight: 700;
-            color: #64748b;
+            color: var(--text-muted);
             text-transform: uppercase;
             letter-spacing: 1.5px;
             padding: 16px 12px 8px
@@ -160,7 +131,7 @@
             gap: 12px;
             padding: 11px 16px;
             border-radius: 10px;
-            color: #cbd5e1;
+            color: var(--text-secondary);
             text-decoration: none;
             font-weight: 500;
             font-size: 0.88rem;
@@ -169,20 +140,14 @@
             position: relative
         }
         
-        .nav-item i {
-            width: 20px;
-            text-align: center;
-            font-size: 1rem
-        }
-        
         .nav-item:hover {
-            background: rgba(255, 255, 255, 0.08);
-            color: #f1f5f9
+            background: rgba(37, 99, 235, 0.06);
+            color: var(--text-primary)
         }
         
         .nav-item.active {
-            background: rgba(37, 99, 235, 0.15);
-            color: #60a5fa;
+            background: rgba(37, 99, 235, 0.1);
+            color: var(--accent);
             font-weight: 600
         }
         
@@ -194,13 +159,12 @@
             transform: translateY(-50%);
             width: 3px;
             height: 60%;
-            background: var(--accent);
-            border-radius: 0 3px 3px 0
+            background:#ffffff;border-radius:0 3px 3px 0
         }
         
         .sidebar-footer {
             padding: 16px;
-            border-top: 1px solid rgba(255, 255, 255, 0.08)
+            border-top: 1px solid var(--border)
         }
         
         .user-card {
@@ -208,32 +172,18 @@
             align-items: center;
             gap: 12px;
             padding: 10px 12px;
-            border-radius: 10px;
-            background: rgba(255, 255, 255, 0.04)
-        }
-        
-        .user-avatar {
-            width: 38px;
-            height: 38px;
-            border-radius: 10px;
-            background: linear-gradient(135deg, var(--accent), #0ea5e9);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-weight: 700;
-            font-size: 0.9rem;
-            color: white
+            border-radius: 10px
         }
         
         .user-info .name {
             font-weight: 600;
             font-size: 0.85rem;
-            color: #f1f5f9
+            color: var(--text-primary)
         }
         
         .user-info .role-badge {
             font-size: 0.65rem;
-            color: #60a5fa;
+            color: var(--accent);
             font-weight: 600;
             text-transform: uppercase;
             letter-spacing: 0.5px
@@ -246,9 +196,9 @@
             width: 100%;
             padding: 10px 16px;
             border-radius: 10px;
-            border: 1px solid rgba(239, 68, 68, 0.2);
-            background: rgba(239, 68, 68, 0.06);
-            color: #f87171;
+            border: 1px solid rgba(220, 38, 38, 0.2);
+            background: rgba(220, 38, 38, 0.04);
+            color: var(--danger);
             font-size: 0.85rem;
             font-weight: 600;
             cursor: pointer;
@@ -258,8 +208,8 @@
         }
         
         .logout-btn:hover {
-            background: rgba(239, 68, 68, 0.12);
-            border-color: rgba(239, 68, 68, 0.3)
+            background: rgba(220, 38, 38, 0.08);
+            border-color: rgba(220, 38, 38, 0.3)
         }
         
         .main-content {
@@ -366,10 +316,6 @@
             gap: 20px
         }
         
-        .setting-group {
-            margin-bottom: 0
-        }
-        
         .setting-group label {
             display: block;
             font-size: 0.82rem;
@@ -407,7 +353,7 @@
             padding: 14px 32px;
             border: none;
             border-radius: 10px;
-            background: linear-gradient(135deg, var(--accent), #1d4ed8);
+            background: rgba(255,255,255,0.15);
             color: white;
             font-family: inherit;
             font-size: 0.95rem;
@@ -425,6 +371,20 @@
         
         .save-btn:active {
             transform: translateY(0)
+        }
+        
+        .nav-badge {
+            position: absolute;
+            right: 10px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: white;
+            font-size: 0.65rem;
+            font-weight: 700;
+            padding: 2px 7px;
+            border-radius: 10px;
+            min-width: 20px;
+            text-align: center
         }
         
         @media(max-width:768px) {
@@ -460,30 +420,33 @@
     <div class="app-layout">
         <aside class="sidebar">
             <div class="sidebar-brand">
-                <div class="brand-icon"><i class="fas fa-shield-halved"></i></div>
-                <div>
-                    <h1>SURVEILLANCE</h1><small>Monitoring System</small></div>
+                <h1>SURVEILLANCE</h1>
+                <small>Monitoring System</small>
             </div>
             <nav class="sidebar-nav">
                 <div class="nav-label">Main</div>
-                <a href="{{ url_for('dashboard') }}" class="nav-item"><i class="fas fa-table-columns"></i><span>Dashboard</span></a>
-                <a href="{{ url_for('alerts_history') }}" class="nav-item"><i class="fas fa-bell"></i><span>Alerts History</span></a>
-                <a href="{{ url_for('message_packets_view') }}" class="nav-item"><i class="fas fa-envelope-open-text"></i><span>Message Packets</span></a> {% if role|lower == 'admin' %}
+                <a href="{{ url_for('dashboard') }}" class="nav-item"><span>Dashboard</span></a>
+                <a href="{{ url_for('alerts_history') }}" class="nav-item" style="position:relative;">
+                    <span>Alerts History</span> {% if active_alerts_count > 0 %}
+                    <span class="nav-badge" style="background:#f59e0b;">{{ active_alerts_count }}</span> {% endif %}
+                </a>
+                <a href="{{ url_for('message_packets_view') }}" class="nav-item"><span>Message Packets</span></a> {% if role|lower == 'admin' %}
                 <div class="nav-label">Administration</div>
-                <a href="{{ url_for('users') }}" class="nav-item"><i class="fas fa-users-gear"></i><span>Manage Users</span></a>
-                <a href="{{ url_for('events') }}" class="nav-item"><i class="fas fa-calendar-check"></i><span>Events</span></a>
-                <a href="{{ url_for('community') }}" class="nav-item"><i class="fas fa-house-chimney-user"></i><span>Community</span></a>
-                <a href="{{ url_for('settings_page') }}" class="nav-item active"><i class="fas fa-gear"></i><span>Settings</span></a> {% endif %}
+                <a href="{{ url_for('users') }}" class="nav-item" style="position:relative;">
+                    <span>Manage Users</span> {% if pending_count > 0 %}
+                    <span class="nav-badge" style="background:#dc2626;">{{ pending_count }}</span> {% endif %}
+                </a>
+                <a href="{{ url_for('events') }}" class="nav-item"><span>Events</span></a>
+                <a href="{{ url_for('settings_page') }}" class="nav-item active"><span>Settings</span></a> {% endif %}
             </nav>
             <div class="sidebar-footer">
                 <div class="user-card">
-                    <div class="user-avatar">{{ username[0]|upper }}</div>
                     <div class="user-info">
                         <div class="name">{{ username }}</div>
                         <div class="role-badge">{{ role }}</div>
                     </div>
                 </div>
-                <a href="{{ url_for('logout') }}" class="logout-btn"><i class="fas fa-right-from-bracket"></i><span>Log Out</span></a>
+                <a href="{{ url_for('logout') }}" class="logout-btn"><span>Log Out</span></a>
             </div>
         </aside>
 
@@ -498,16 +461,15 @@
             <div class="page-content">
                 {% with messages = get_flashed_messages(with_categories=true) %} {% if messages %}{% for category, message in messages %}
                 <div class="flash {{ category }}">
-                    <i class="fas {% if category == 'error' %}fa-circle-exclamation{% else %}fa-circle-check{% endif %}"></i> {{ message }}
+                    {{ message }}
                 </div>
                 {% endfor %}{% endif %}{% endwith %}
 
                 <form method="POST" action="{{ url_for('update_settings') }}">
 
-                    <!-- Timing -->
                     <div class="panel animate-in">
                         <div class="panel-header">
-                            <h3><i class="fas fa-clock"></i> Timing &amp; Scheduling</h3>
+                            <h3>Timing &amp; Scheduling</h3>
                         </div>
                         <div class="panel-body">
                             <div class="settings-grid">
@@ -525,10 +487,9 @@
                         </div>
                     </div>
 
-                    <!-- Violence Detection -->
                     <div class="panel animate-in">
                         <div class="panel-header">
-                            <h3><i class="fas fa-hand-fist"></i> Violence Detection</h3>
+                            <h3>Violence Detection</h3>
                         </div>
                         <div class="panel-body">
                             <div class="settings-grid">
@@ -539,17 +500,16 @@
                                 </div>
                                 <div class="setting-group">
                                     <label>Violence Streak (frames)</label>
-                                    <div class="hint">Consecutive violent frames needed before alarm (filters brief contact)</div>
+                                    <div class="hint">Consecutive violent frames needed before alarm</div>
                                     <input type="number" name="violence_streak" value="{{ settings.violence_streak }}" min="1" max="100" required>
                                 </div>
                             </div>
                         </div>
                     </div>
 
-                    <!-- Weapon Detection -->
                     <div class="panel animate-in">
                         <div class="panel-header">
-                            <h3><i class="fas fa-crosshairs"></i> Weapon Detection</h3>
+                            <h3>Weapon Detection</h3>
                         </div>
                         <div class="panel-body">
                             <div class="settings-grid">
@@ -562,10 +522,9 @@
                         </div>
                     </div>
 
-                    <!-- Cooldowns -->
                     <div class="panel animate-in">
                         <div class="panel-header">
-                            <h3><i class="fas fa-hourglass-half"></i> Alert Cooldowns</h3>
+                            <h3>Alert Cooldowns</h3>
                         </div>
                         <div class="panel-body">
                             <div class="settings-grid">
@@ -584,7 +543,7 @@
                     </div>
 
                     <button type="submit" class="save-btn">
-                        <i class="fas fa-floppy-disk"></i>&nbsp; Save Settings
+                        Save Settings
                     </button>
                 </form>
             </div>

@@ -114,7 +114,7 @@
         .brand h1 {
             font-size: 1.5rem;
             font-weight: 800;
-            color: #1e293b;
+            color: #000000;
             letter-spacing: 2px;
         }
         /* Card */
@@ -163,7 +163,7 @@
         .login-title h2 {
             font-size: 1.2rem;
             font-weight: 700;
-            color: #1e293b;
+            color: #000000;
             margin-bottom: 6px;
         }
         
@@ -186,7 +186,7 @@
         
         .role-chip.admin {
             background: rgba(15, 23, 42, 0.06);
-            color: #1e293b;
+            color: #000000;
         }
         /* Flash messages */
         
@@ -248,7 +248,7 @@
             border-radius: 10px;
             font-family: inherit;
             font-size: 0.9rem;
-            color: #1e293b;
+            color: #000000;
             background: #f8fafc;
             transition: all 0.2s ease;
             outline: none;
@@ -345,7 +345,7 @@
 <body>
     <div class="login-container">
         <div class="brand">
-            <div class="brand-icon"><i class="fas fa-shield-halved"></i></div>
+            <img src="{{ url_for('static', filename='logo.png') }}" alt="Logo" style="width:40px;height:40px;border-radius:10px;object-fit:contain;">
             <h1>SURVEILLANCE SYSTEM</h1>
         </div>
 
@@ -357,14 +357,13 @@
             <div class="login-title">
                 <h2>Sign In</h2>
                 <span class="role-chip {{ role_type|lower }}">
-                    <i class="fas {% if role_type|lower == 'admin' %}fa-user-shield{% else %}fa-desktop{% endif %}"></i>
                     {{ role_type }} Portal
                 </span>
             </div>
 
             {% with messages = get_flashed_messages(with_categories=true) %} {% if messages %} {% for category, message in messages %}
             <div class="flash {{ category }}">
-                <i class="fas {% if category == 'error' %}fa-circle-exclamation{% else %}fa-circle-check{% endif %}"></i> {{ message }}
+                {{ message }}
             </div>
             {% endfor %} {% endif %} {% endwith %}
 

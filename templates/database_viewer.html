@@ -31,7 +31,7 @@
             --info-glow: rgba(14, 165, 233, 0.1);
             --purple: #7c3aed;
             --purple-glow: rgba(124, 58, 237, 0.1);
-            --text-primary: #1e293b;
+            --text-primary: #000000;
             --text-secondary: #475569;
             --text-muted: #94a3b8;
             --border: #e2e8f0;
@@ -106,7 +106,7 @@
         .topbar-icon {
             width: 42px;
             height: 42px;
-            background: linear-gradient(135deg, var(--accent), #1d4ed8);
+            background: rgba(255,255,255,0.15);
             border-radius: 12px;
             display: flex;
             align-items: center;
@@ -398,7 +398,7 @@
         
         .role-chip.admin {
             background: rgba(30, 41, 59, 0.08);
-            color: #1e293b;
+            color: #000000;
         }
         
         .role-chip.operator {
@@ -535,27 +535,27 @@
         <!-- Stats -->
         <div class="stats-row">
             <div class="stat-card animate-in">
-                <div class="stat-icon"><i class="fas fa-users"></i></div>
+                
                 <div class="stat-value">{{ users|length }}</div>
                 <div class="stat-label">Active Users</div>
             </div>
             <div class="stat-card animate-in">
-                <div class="stat-icon"><i class="fas fa-bell"></i></div>
+                
                 <div class="stat-value">{{ alerts|length }}</div>
                 <div class="stat-label">Alerts</div>
             </div>
             <div class="stat-card animate-in">
-                <div class="stat-icon"><i class="fas fa-calendar"></i></div>
+                
                 <div class="stat-value">{{ events|length }}</div>
                 <div class="stat-label">Events</div>
             </div>
             <div class="stat-card animate-in">
-                <div class="stat-icon"><i class="fas fa-user-slash"></i></div>
+                
                 <div class="stat-value">{{ deleted_users|length }}</div>
                 <div class="stat-label">Archived Users</div>
             </div>
             <div class="stat-card animate-in">
-                <div class="stat-icon"><i class="fas fa-calendar-xmark"></i></div>
+                
                 <div class="stat-value">{{ deleted_events|length }}</div>
                 <div class="stat-label">Archived Events</div>
             </div>
@@ -674,7 +674,7 @@
                             </td>
                             <td>
                                 <span style="display:inline-flex; align-items:center; gap:4px; padding:3px 10px; border-radius:20px; background:var(--info-glow); color:#0284c7; font-size:0.75rem; font-weight:600;">
-                                    <i class="fas fa-people-group" style="font-size:0.65rem;"></i> {{ ev.expected_crowd }}
+                                    {{ ev.expected_crowd }}
                                 </span>
                             </td>
                         </tr>
