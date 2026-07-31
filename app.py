@@ -244,7 +244,6 @@ def get_alerts():
         cursor.execute("SELECT * FROM alerts WHERE timestamp >= ? ORDER BY timestamp DESC", (login_time,))
         alerts = cursor.fetchall()
     row_template = """
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
     {% for alert in alerts %}
     <tr>
         <td style="color:#94a3b8; font-size:0.75rem; white-space:nowrap;">
@@ -544,6 +543,53 @@ def reject_user(user_id):
         conn.commit()
     flash("User rejected.", "success")
     return redirect(url_for('users'))
+
+# ==================== COMMUNITY / COLONY ====================
+
+@app.route('/community')
+def community():
+    if 'username' not in session:
+        return redirect(url_for('index'))
+    if session.get('role', '').lower() != 'admin':
+        flash("Access Denied: Administrator privileges required.", "error")
+        return redirect(url_for('dashboard'))
+
+    from database import get_community_members, get_device_location
+    members = [dict(m) for m in get_community_members()]
+    location = get_device_location()
+
+    return render_template('community.html', username=session['username'],
+                          role=session['role'], members=members, location=location)
+
+
+@app.route('/community/add', methods=['POST'])
+def add_community_member_route():
+    if 'username' not in session or session.get('role', '').lower() != 'admin':
+        return redirect(url_for('index'))
+    from database import add_community_member
+    name = request.form['name']
+    email = request.form['email']
+    phone = request.form.get('phone', '')
+    lat = request.form.get('lat')
+    lng = request.form.get('lng')
+    add_community_member(name, email, phone,
+                        float(lat) if lat else None,
+                        float(lng) if lng else None)
+    flash(f"Community member '{name}' added.", "success")
+    return redirect(url_for('community'))
+
+
+@app.route('/community/delete/<int:member_id>', methods=['POST'])
+def delete_community_member_route(member_id):
+    if 'username' not in session or session.get('role', '').lower() != 'admin':
+        return redirect(url_for('index'))
+    from database import delete_community_member
+    status = delete_community_member(member_id)
+    if status == "not_found":
+        flash("Member not found.", "error")
+    else:
+        flash("Community member removed.", "success")
+    return redirect(url_for('community'))
 
 
 # ==================== RESTRICTED ZONES ====================
