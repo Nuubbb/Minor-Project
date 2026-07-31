@@ -8,7 +8,7 @@ import dns.resolver
 from config import SECRET_KEY, SCREENSHOT_DIR
 from database import (init_db, mark_false_alarm, DATABASE,
                       init_events, add_event, delete_event,
-                      get_device_location,
+                      get_device_location, update_device_location,
                       get_restricted_zones, add_restricted_zone, delete_restricted_zone,
                       get_settings, update_setting)
 from detection import generate_frames
@@ -113,9 +113,10 @@ def signup():
             )
             conn.commit()
 
-flash("If this email exists, you'll receive a verification code shortly.", "info")        return redirect(url_for('verify_email', email=email))
+            flash("If this email exists, you'll receive a verification code shortly.", "info")        
+            return redirect(url_for('verify_email', email=email))
 
-    return render_template('signup.html')
+            return render_template('signup.html')
 
 
 @app.route('/verify_email', methods=['GET', 'POST'])
