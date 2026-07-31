@@ -8,9 +8,9 @@ import dns.resolver
 from config import SECRET_KEY, SCREENSHOT_DIR
 from database import (init_db, mark_false_alarm, DATABASE,
                       init_events, add_event, delete_event,
-                      get_device_location,
+                      get_device_location, update_device_location,
                       get_restricted_zones, add_restricted_zone, delete_restricted_zone,
-                      get_settings, update_setting)
+                      get_settings, update_setting, delete_user)
 from detection import generate_frames
 from api import api_bp
 
@@ -20,13 +20,29 @@ init_db()
 init_events()
 app.register_blueprint(api_bp)
 
+
+@app.context_processor
+def inject_nav_counts():
+    counts = {"pending_count": 0, "active_alerts_count": 0}
+    try:
+        with sqlite3.connect(DATABASE) as conn:
+            counts["pending_count"] = conn.execute(
+                "SELECT COUNT(*) FROM users WHERE status='pending'"
+            ).fetchone()[0]
+            counts["active_alerts_count"] = conn.execute(
+                "SELECT COUNT(*) FROM alerts WHERE is_false_alarm=0"
+            ).fetchone()[0]
+    except Exception:
+        pass
+    return counts
+
+
 # ----------------- INPUT SOURCE -----------------
 USE_WEBCAM = True
 VIDEO_PATH = "fight.mp4"
 
-DISMISS_SECRET = "kec_surveillance_2026"   # MUST match email_alert.py
+DISMISS_SECRET = "kec_surveillance_2026"
 
-# ================= SUDARSHAN'S ROUTES =================
 
 @app.route('/')
 def index():
@@ -91,17 +107,19 @@ def signup():
             if cursor.fetchone():
                 flash("Email already registered.", "error")
                 return redirect(url_for('signup'))
-            # Check email domain exists
+
             try:
                 domain = email.split('@')[1]
                 dns.resolver.resolve(domain, 'MX')
             except Exception:
                 flash("Invalid email domain. Please use a real email address.", "error")
                 return redirect(url_for('signup'))
-            code = str(random.randint(100000, 999999))
-            hashed_pw = generate_password_hash(password)
+
             lat = request.form.get('lat', '')
             lng = request.form.get('lng', '')
+            code = str(random.randint(100000, 999999))
+            hashed_pw = generate_password_hash(password)
+
             if not send_verification_code(email, code):
                 flash("Could not send verification email. Please check your email address.", "error")
                 return redirect(url_for('signup'))
@@ -113,9 +131,10 @@ def signup():
             )
             conn.commit()
 
-            flash("If this email exists, you'll receive a verification code shortly.", "info")
-            return redirect(url_for('verify_email', email=email))
-        return render_template('signup.html')
+        flash("If this email exists, you'll receive a verification code shortly.", "info")
+        return redirect(url_for('verify_email', email=email))
+
+    return render_template('signup.html')
 
 
 @app.route('/verify_email', methods=['GET', 'POST'])
@@ -139,16 +158,13 @@ def verify_email():
                 flash("Invalid verification code.", "error")
                 return render_template('verify_email.html', email=email)
 
-            # Check if code is expired (10 minutes)
             created = datetime.strptime(record['created_at'], "%Y-%m-%d %H:%M:%S")
             if (datetime.now() - created).total_seconds() > 600:
                 flash("Verification code expired. Please sign up again.", "error")
                 return redirect(url_for('signup'))
 
-            # Mark code as used
             cursor.execute("UPDATE email_verification SET used=1 WHERE id=?", (record['id'],))
 
-            # Create the actual user account
             cursor.execute(
                 "INSERT INTO users (username, password, email, role, status, lat, lng) VALUES (?, ?, ?, 'Operator', 'pending', ?, ?)",
                 (record['username'], record['password_hash'], record['email'],
@@ -160,6 +176,8 @@ def verify_email():
         return redirect(url_for('index'))
 
     return render_template('verify_email.html', email=email)
+
+
 @app.route('/dashboard')
 def dashboard():
     if 'username' not in session:
@@ -174,7 +192,6 @@ def dashboard():
         cursor.execute("SELECT * FROM alerts WHERE timestamp >= ? ORDER BY timestamp DESC", (login_time,))
         alerts = cursor.fetchall()
 
-        # Threat type counts for charts
         cursor.execute("""
             SELECT alert_type, COUNT(*) as cnt,
                    SUM(CASE WHEN is_false_alarm = 0 THEN 1 ELSE 0 END) as active_cnt
@@ -183,7 +200,6 @@ def dashboard():
         """)
         threat_stats = [dict(row) for row in cursor.fetchall()]
 
-        # Alerts per day for line chart (last 7 days)
         cursor.execute("""
             SELECT DATE(timestamp) as day, COUNT(*) as cnt
             FROM alerts
@@ -228,7 +244,7 @@ def get_alerts():
         cursor.execute("SELECT * FROM alerts WHERE timestamp >= ? ORDER BY timestamp DESC", (login_time,))
         alerts = cursor.fetchall()
     row_template = """
-    
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
     {% for alert in alerts %}
     <tr>
         <td style="color:#94a3b8; font-size:0.75rem; white-space:nowrap;">
@@ -507,6 +523,7 @@ def database_viewer():
                            deleted_events=del_events,
                            alerts=all_alerts)
 
+
 @app.route('/approve_user/<int:user_id>', methods=['POST'])
 def approve_user(user_id):
     if 'username' not in session or session.get('role', '').lower() != 'admin':
@@ -527,6 +544,38 @@ def reject_user(user_id):
         conn.commit()
     flash("User rejected.", "success")
     return redirect(url_for('users'))
+
+
+# ==================== RESTRICTED ZONES ====================
+
+@app.route('/api/zones', methods=['GET'])
+def get_zones():
+    if 'username' not in session:
+        return jsonify({"error": "Unauthorized"}), 401
+    zones = get_restricted_zones()
+    return jsonify(zones)
+
+
+@app.route('/api/zones', methods=['POST'])
+def create_zone():
+    if 'username' not in session:
+        return jsonify({"error": "Unauthorized"}), 401
+    data = request.get_json()
+    zone_id = add_restricted_zone(
+        data.get('label', 'Restricted Zone'),
+        data['x1'], data['y1'], data['x2'], data['y2'],
+        session['username']
+    )
+    return jsonify({"id": zone_id, "status": "created"})
+
+
+@app.route('/api/zones/<int:zone_id>', methods=['DELETE'])
+def remove_zone(zone_id):
+    if 'username' not in session:
+        return jsonify({"error": "Unauthorized"}), 401
+    delete_restricted_zone(zone_id)
+    return jsonify({"status": "deleted"})
+
 
 # ==================== SYSTEM SETTINGS ====================
 
@@ -551,6 +600,7 @@ def update_settings():
             update_setting(key, value)
     flash("Settings updated successfully.", "success")
     return redirect(url_for('settings_page'))
+
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', debug=True, port=5001, threaded=True)
