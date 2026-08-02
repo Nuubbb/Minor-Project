@@ -7,7 +7,19 @@ SENDER = "surveillancesystem077@gmail.com"
 APP_PASS = "abfh myyc kugr njhk"
 SYSTEM_NAME = "Surveillance System"
 
-BASE_URL = "http://192.168.18.6:5001"
+import socket
+
+def _get_local_ip():
+    try:
+        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        s.connect(("8.8.8.8", 80))
+        ip = s.getsockname()[0]
+        s.close()
+        return ip
+    except:
+        return "127.0.0.1"
+
+BASE_URL = f"http://{_get_local_ip()}:5001"
 DISMISS_SECRET = "kec_surveillance_2026"
 
 
