@@ -381,7 +381,30 @@ def delete_user_route(user_id):
 
     return redirect(url_for('users'))
 
-
+@app.route('/broadcast/<int:alert_id>/<secret>')
+def broadcast_from_email(alert_id, secret):
+    if secret != DISMISS_SECRET:
+        return "Unauthorized", 403
+    from email_alert import send_community_alert
+    from database import get_community_members, get_device_location
+    with sqlite3.connect(DATABASE) as conn:
+        conn.row_factory = sqlite3.Row
+        alert = conn.execute("SELECT * FROM alerts WHERE id=?", (alert_id,)).fetchone()
+    if not alert:
+        return "Alert not found", 404
+    screenshot_path = f"screenshots/alert_{alert_id}.jpg"
+    recipients = [dict(m) for m in get_community_members()]
+    if not recipients:
+        return "No community members to notify."
+    location = get_device_location()
+    sent, failed = send_community_alert(
+        alert_id=alert["id"], alert_type=alert["alert_type"],
+        message=alert["alert_type"].replace("-", " ").capitalize(),
+        confidence=alert["confidence"], timestamp=alert["timestamp"],
+        screenshot_path=screenshot_path, location=location,
+        recipients=recipients, reported_by=alert["operator_username"]
+    )
+    return f"Broadcast sent to {sent} resident(s). ({failed} failed)"
 @app.route('/dismiss/<int:alert_id>/<token>')
 def dismiss_alert(alert_id, token):
     if token != DISMISS_SECRET:

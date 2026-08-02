@@ -1,10 +1,4 @@
-"""
-email_alert.py — sends a Google-style security-alert email to the logged-in
-operator. The email includes a "This was a false alarm" BUTTON; clicking it hits
-the /dismiss route in app.py and marks the alert false in the database directly
-(just like Google's "No, it wasn't me" button). No reply, no login needed.
-"""
-import smtplib
+﻿import smtplib
 from email.message import EmailMessage
 from datetime import datetime
 from pathlib import Path
@@ -18,11 +12,16 @@ DISMISS_SECRET = "kec_surveillance_2026"
 
 
 def send_email_alert(to_email, message, alert_id):
-    """Email the operator on a real threat, with a one-click 'false alarm' button."""
     if not to_email:
         return
     time_str = datetime.now().strftime("%B %d, %Y at %I:%M %p")
     dismiss_url = f"{BASE_URL}/dismiss/{alert_id}/{DISMISS_SECRET}"
+    broadcast_url = f"{BASE_URL}/broadcast/{alert_id}/{DISMISS_SECRET}"
+    screenshot_path = Path(__file__).parent / "screenshots" / f"alert_{alert_id}.jpg"
+    screenshot_bytes = None
+    if screenshot_path.exists():
+        screenshot_bytes = screenshot_path.read_bytes()
+
     try:
         msg = EmailMessage()
         msg["Subject"] = f"Security Alert: {message} [ID:{alert_id}]"
@@ -32,10 +31,12 @@ def send_email_alert(to_email, message, alert_id):
         msg.set_content(
             f"SECURITY ALERT\n\n{message}\n\n"
             f"Alert ID: {alert_id}\nTime: {time_str}\n\n"
-            f"If this was NOT a real threat, click to dismiss it:\n{dismiss_url}\n\n"
+            f"If this was NOT a real threat:\n{dismiss_url}\n\n"
+            f"To broadcast to all residents:\n{broadcast_url}\n\n"
             f"-- Automated notification, {SYSTEM_NAME}"
         )
 
+        screenshot_note = "<p style='font-size:13px; color:#5f6368;'>Screenshot from camera attached.</p>" if screenshot_bytes else ""
         html = f"""
         <div style="font-family:Arial,Helvetica,sans-serif; max-width:480px; margin:auto;
                     border:1px solid #e0e0e0; border-radius:10px; overflow:hidden;">
@@ -43,9 +44,7 @@ def send_email_alert(to_email, message, alert_id):
             <h2 style="margin:0; font-size:18px;">&#9888;&nbsp; Security Alert</h2>
           </div>
           <div style="padding:22px; color:#202124;">
-            <p style="font-size:15px; margin-top:0;">
-              A security event was detected on your monitored surveillance feed.
-            </p>
+            <p style="font-size:15px; margin-top:0;">A security event was detected.</p>
             <table style="width:100%; border-collapse:collapse; font-size:14px; margin:14px 0;">
               <tr><td style="padding:8px 0; color:#5f6368;">Event</td>
                   <td style="padding:8px 0; font-weight:bold;">{message}</td></tr>
@@ -54,13 +53,21 @@ def send_email_alert(to_email, message, alert_id):
               <tr><td style="padding:8px 0; color:#5f6368;">Time</td>
                   <td style="padding:8px 0;">{time_str}</td></tr>
             </table>
-            <p style="font-size:13.5px; color:#5f6368;">Was this a real threat?</p>
-            <a href="{dismiss_url}"
-               style="display:inline-block; background:#ffffff; color:#d93025;
-                      border:1px solid #d93025; text-decoration:none; padding:10px 20px;
-                      border-radius:6px; font-size:14px; font-weight:bold;">
-              No, it was a false alarm
-            </a>
+            {screenshot_note}
+            <div style="margin-top:16px;">
+              <a href="{dismiss_url}"
+                 style="display:inline-block; background:#ffffff; color:#d93025;
+                        border:1px solid #d93025; text-decoration:none; padding:10px 20px;
+                        border-radius:6px; font-size:14px; font-weight:bold; margin-right:8px;">
+                No, it was a false alarm
+              </a>
+              <a href="{broadcast_url}"
+                 style="display:inline-block; background:#f59e0b; color:#ffffff;
+                        border:none; text-decoration:none; padding:10px 20px;
+                        border-radius:6px; font-size:14px; font-weight:bold;">
+                Broadcast to Colony
+              </a>
+            </div>
           </div>
           <div style="background:#f8f9fa; padding:12px 20px; font-size:12px;
                       color:#9aa0a6; text-align:center;">
@@ -69,6 +76,11 @@ def send_email_alert(to_email, message, alert_id):
         </div>
         """
         msg.add_alternative(html, subtype="html")
+        if screenshot_bytes:
+            msg.get_payload()[1].add_related(
+                screenshot_bytes, maintype="image", subtype="jpeg",
+                filename=f"alert_{alert_id}.jpg"
+            )
 
         with smtplib.SMTP_SSL("smtp.gmail.com", 465) as server:
             server.login(SENDER, APP_PASS)
@@ -79,12 +91,13 @@ def send_email_alert(to_email, message, alert_id):
 
 
 def send_community_alert(alert_id, alert_type, message, confidence, timestamp, screenshot_path, location, recipients, reported_by=None):
-    """Email every community member with the captured screenshot attached."""
     maps_url = f"https://www.google.com/maps?q={location['lat']},{location['lng']}"
     screenshot_bytes = None
     if screenshot_path and Path(screenshot_path).exists():
         screenshot_bytes = Path(screenshot_path).read_bytes()
 
+    reported_row = f"<tr><td style='padding:8px 0; color:#5f6368;'>Reported by</td><td style='padding:8px 0;'>{reported_by}</td></tr>" if reported_by else ""
+    screenshot_note = "<p style='font-size:13px; color:#5f6368;'>See attached snapshot from the camera.</p>" if screenshot_bytes else ""
     html = f"""
     <div style="font-family:Arial,Helvetica,sans-serif; max-width:480px; margin:auto;
                 border:1px solid #e0e0e0; border-radius:10px; overflow:hidden;">
@@ -102,9 +115,9 @@ def send_community_alert(alert_id, alert_type, message, confidence, timestamp, s
               <td style="padding:8px 0;">{timestamp}</td></tr>
           <tr><td style="padding:8px 0; color:#5f6368;">Location</td>
               <td style="padding:8px 0;"><a href="{maps_url}">{location['label']}</a></td></tr>
-          {f'<tr><td style="padding:8px 0; color:#5f6368;">Reported by</td><td style="padding:8px 0;">{reported_by}</td></tr>' if reported_by else ''}
+          {reported_row}
         </table>
-        {'<p style="font-size:13px; color:#5f6368;">See attached snapshot from the camera.</p>' if screenshot_bytes else ''}
+        {screenshot_note}
       </div>
       <div style="background:#f8f9fa; padding:12px 20px; font-size:12px;
                   color:#9aa0a6; text-align:center;">
@@ -150,7 +163,6 @@ def send_community_alert(alert_id, alert_type, message, confidence, timestamp, s
 
 
 def send_verification_code(to_email, code):
-    """Send a 6-digit verification code to confirm email ownership."""
     if not to_email:
         return False
     try:
@@ -169,13 +181,13 @@ def send_verification_code(to_email, code):
         html = f"""
         <div style="font-family:Arial,Helvetica,sans-serif; max-width:480px; margin:auto;
                     border:1px solid #e0e0e0; border-radius:10px; overflow:hidden;">
-          <div style="background:#2563eb; color:#ffffff; padding:16px 22px;">
+          <div style="background:#1a1a1a; color:#ffffff; padding:16px 22px;">
             <h2 style="margin:0; font-size:18px;">&#128274;&nbsp; Email Verification</h2>
           </div>
           <div style="padding:22px; color:#202124; text-align:center;">
             <p style="font-size:15px;">Your verification code is:</p>
             <div style="font-size:36px; font-weight:bold; letter-spacing:8px;
-                        color:#2563eb; padding:20px; background:#f0f5ff;
+                        color:#1a1a1a; padding:20px; background:#f0f0f0;
                         border-radius:10px; margin:16px 0;">{code}</div>
             <p style="font-size:13px; color:#5f6368;">
               Enter this code to complete your registration.<br>
