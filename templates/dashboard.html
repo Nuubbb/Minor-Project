@@ -870,13 +870,15 @@
                                 <a href="{{ url_for('dashboard', live='true', video='cctv') }}" class="feed-btn cctv">CCTV</a>
                                 <a href="{{ url_for('dashboard') }}" class="feed-btn stop">Stop</a>
                                 <a href="{{ url_for('dashboard', live='true', video='demo.mp4') }}" class="feed-btn demo">Demo</a>
+                                <button id="drawZoneBtn" class="feed-btn" style="background:#7c3aed;color:#fff;border:none;cursor:pointer;" onclick="toggleZoneDraw()">📐 Draw Zone</button>
                             </div>
                         </div>
                         <div class="panel-body">
                             <div class="video-wrapper">
                                 {% if run_live %}
                                 <div class="live-badge"><span class="rec-dot"></span> LIVE</div>
-                                <img src="{{ url_for('video_feed', video=request.args.get('video','')) }}" alt="Live Feed">
+                                <img id="liveFeed" src="{{ url_for('video_feed', video=request.args.get('video','')) }}" alt="Live Feed">
+                                <canvas id="zoneCanvas" style="position:absolute;top:0;left:0;width:100%;height:100%;cursor:crosshair;pointer-events:none;"></canvas>
                                 <div class="timestamp-overlay" id="feed-time"></div>
                                 {% else %}
                                 <div class="feed-paused">
@@ -890,6 +892,15 @@
 
                     <div class="panel animate-in">
                         <div class="panel-header">
+                            <div class="panel animate-in">
+                                <div class="panel-header">
+                                    <h3>Restricted Zones</h3>
+                                    <span id="zone-count" style="font-size:0.75rem;color:var(--text-muted);"></span>
+                                </div>
+                                <div class="panel-body" style="padding:12px;">
+                                    <div id="zones-list" style="font-size:0.85rem;color:var(--text-muted);">Loading...</div>
+                                </div>
+                            </div>
                             <h3>Recent Alerts</h3>
                             <a href="{{ url_for('alerts_history') }}" style="font-size:0.75rem;color:var(--accent);text-decoration:none;font-weight:600;">View All</a>
                         </div>
@@ -1148,6 +1159,148 @@
         }
         loadAnalytics();
         setInterval(loadAnalytics, 30000);
+        // ==================== RESTRICTED ZONE DRAWING ====================
+        var zoneDrawing = false;
+        var zoneStart = null;
+
+        function toggleZoneDraw() {
+            var canvas = document.getElementById('zoneCanvas');
+            var btn = document.getElementById('drawZoneBtn');
+            if (!canvas) return;
+            zoneDrawing = !zoneDrawing;
+            canvas.style.pointerEvents = zoneDrawing ? 'auto' : 'none';
+            btn.textContent = zoneDrawing ? '✕ Cancel' : '📐 Draw Zone';
+            btn.style.background = zoneDrawing ? '#ef4444' : '#7c3aed';
+            if (!zoneDrawing) {
+                var ctx = canvas.getContext('2d');
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+            }
+        }
+
+        (function() {
+            var canvas = document.getElementById('zoneCanvas');
+            if (!canvas) return;
+            var feed = document.getElementById('liveFeed');
+            if (!feed) return;
+
+            function sizeCanvas() {
+                canvas.width = feed.clientWidth;
+                canvas.height = feed.clientHeight;
+            }
+            feed.addEventListener('load', sizeCanvas);
+            window.addEventListener('resize', sizeCanvas);
+            sizeCanvas();
+
+            canvas.addEventListener('mousedown', function(e) {
+                if (!zoneDrawing) return;
+                var r = canvas.getBoundingClientRect();
+                zoneStart = {
+                    x: e.clientX - r.left,
+                    y: e.clientY - r.top
+                };
+            });
+
+            canvas.addEventListener('mousemove', function(e) {
+                if (!zoneDrawing || !zoneStart) return;
+                var r = canvas.getBoundingClientRect();
+                var mx = e.clientX - r.left;
+                var my = e.clientY - r.top;
+                var ctx = canvas.getContext('2d');
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                ctx.strokeStyle = '#7c3aed';
+                ctx.lineWidth = 2;
+                ctx.setLineDash([6, 3]);
+                ctx.strokeRect(zoneStart.x, zoneStart.y, mx - zoneStart.x, my - zoneStart.y);
+            });
+
+            canvas.addEventListener('mouseup', function(e) {
+                if (!zoneDrawing || !zoneStart) return;
+                var r = canvas.getBoundingClientRect();
+                var endX = e.clientX - r.left;
+                var endY = e.clientY - r.top;
+                var w = canvas.width,
+                    h = canvas.height;
+
+                // normalize to 0-1
+                var x1 = zoneStart.x / w,
+                    y1 = zoneStart.y / h;
+                var x2 = endX / w,
+                    y2 = endY / h;
+                zoneStart = null;
+
+                // ignore tiny accidental clicks
+                if (Math.abs(x2 - x1) < 0.02 || Math.abs(y2 - y1) < 0.02) return;
+
+                var label = prompt('Zone label:', 'Restricted Zone');
+                if (!label) {
+                    toggleZoneDraw();
+                    return;
+                }
+
+                fetch('/api/zones', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            label: label,
+                            x1: x1,
+                            y1: y1,
+                            x2: x2,
+                            y2: y2
+                        })
+                    }).then(function(res) {
+                        return res.json();
+                    })
+                    .then(function(data) {
+                        alert('Zone "' + label + '" saved! It will appear on the feed within 30 seconds.');
+                        toggleZoneDraw();
+                    }).catch(function(err) {
+                        alert('Error saving zone: ' + err);
+                    });
+            });
+        })();
+        // ==================== ZONE LIST ====================
+        function loadZones() {
+            fetch('/api/zones').then(function(r) {
+                    return r.json();
+                })
+                .then(function(zones) {
+                    var el = document.getElementById('zones-list');
+                    var countEl = document.getElementById('zone-count');
+                    if (!el) return;
+                    countEl.textContent = zones.length + ' zone' + (zones.length !== 1 ? 's' : '');
+                    if (zones.length === 0) {
+                        el.innerHTML = '<p style="margin:0;">No zones defined. Use <strong>Draw Zone</strong> to add one.</p>';
+                        return;
+                    }
+                    el.innerHTML = zones.map(function(z) {
+                        return '<div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid var(--border);">' +
+                            '<span>🟣 ' + z.label + '</span>' +
+                            '<button onclick="deleteZone(' + z.id + ')" style="background:#ef4444;color:#fff;border:none;padding:2px 8px;border-radius:4px;cursor:pointer;font-size:0.75rem;">Delete</button>' +
+                            '</div>';
+                    }).join('');
+                }).catch(function() {
+                    var el = document.getElementById('zones-list');
+                    if (el) el.textContent = 'Could not load zones.';
+                });
+        }
+
+        function deleteZone(id) {
+            if (!confirm('Delete this zone?')) return;
+            fetch('/api/zones/' + id, {
+                    method: 'DELETE'
+                })
+                .then(function() {
+                    loadZones();
+                })
+                .catch(function(err) {
+                    alert('Error: ' + err);
+                });
+        }
+
+        loadZones();
+        setInterval(loadZones, 30000);
     </script>
 </body>
 

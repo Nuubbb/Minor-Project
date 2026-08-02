@@ -21,7 +21,18 @@ weapon_model = YOLO("best.pt")                              # gun/knife detectio
 violence_detector = ViolenceDetector("violence_mobilenet_lstm.pt")   # temporal violence model
 assessor = ThreatAssessor()
 _settings_cache = {"checked": 0.0}
+# ---- restricted-zone cache (reloads every 30s) ----
+_zone_cache = {"checked": 0.0, "zones": []}
 
+def _reload_zones():
+    t = time.time()
+    if t - _zone_cache["checked"] > 30:
+        try:
+            _zone_cache["zones"] = get_restricted_zones()
+        except Exception as e:
+            print("[zones] reload skip:", e)
+        _zone_cache["checked"] = t
+    return _zone_cache["zones"]
 def _reload_settings():
     """Reload admin settings into the assessor every 30 seconds."""
     t = time.time()
@@ -122,7 +133,21 @@ def _draw_boxes(img, boxes):
         cv2.putText(img, label, (x1, max(15, y1 - 6)),
                     cv2.FONT_HERSHEY_SIMPLEX, 0.5, color, 1)
     return img
-
+def _check_intrusion(person_boxes, zones, frame_w, frame_h):
+    """Check if any person's feet (bottom-center of bbox) fall inside a restricted zone.
+    Zone coords are normalized 0-1; person boxes are in pixels."""
+    intruders = []
+    for (x1, y1, x2, y2, label, color) in person_boxes:
+        foot_x = (x1 + x2) / 2.0 / frame_w
+        foot_y = y2 / frame_h
+        for z in zones:
+            zx1, zy1, zx2, zy2 = z['x1'], z['y1'], z['x2'], z['y2']
+            zx_min, zx_max = min(zx1, zx2), max(zx1, zx2)
+            zy_min, zy_max = min(zy1, zy2), max(zy1, zy2)
+            if zx_min <= foot_x <= zx_max and zy_min <= foot_y <= zy_max:
+                intruders.append((label, z['label']))
+                break
+    return intruders
 
 _event_cache = {"checked": 0.0, "active": None}
 def current_event():
@@ -188,7 +213,30 @@ def generate_frames(operator_email=None, source=None, operator_username="system"
                 weapon_boxes, weapons = _detect_weapons(frame)
 
             img = _draw_boxes(frame.copy(), person_boxes + weapon_boxes)
+            # ---- restricted zones: draw + check intrusion ----
+            zones = _reload_zones()
+            h, w = frame.shape[:2]
+            for z in zones:
+                zx1 = int(z['x1'] * w); zy1 = int(z['y1'] * h)
+                zx2 = int(z['x2'] * w); zy2 = int(z['y2'] * h)
+                cv2.rectangle(img, (zx1, zy1), (zx2, zy2), (124, 58, 237), 2)
+                cv2.putText(img, z['label'], (zx1, max(15, zy1 - 6)),
+                            cv2.FONT_HERSHEY_SIMPLEX, 0.5, (124, 58, 237), 1)
 
+            intruders = _check_intrusion(person_boxes, zones, w, h)
+            for (person_label, zone_label) in intruders:
+                if _should_act("intrusion"):
+                    alert_msg = f"intrusion: {person_label} in {zone_label}"
+                    new_id = log_alert("intrusion", 0.9, operator_username)
+                    _save_alert_screenshot(new_id, img)
+                    trigger_audio_alarm()
+                    cv2.putText(img, f"INTRUSION: {zone_label}", (20, 170),
+                                cv2.FONT_HERSHEY_SIMPLEX, 0.7, (124, 58, 237), 2)
+                    if operator_email and send_email_alert and (time.time() - _last_email["t"] > 60):
+                        _last_email["t"] = time.time()
+                        threading.Thread(target=send_email_alert,
+                                         args=(operator_email, alert_msg, new_id),
+                                         daemon=True).start()
             ev = current_event()
             tier, alert_type, message, conf = assessor.assess(
                 violence_prob=violence_prob, weapons=weapons,
