@@ -1,9 +1,9 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Community — Surveillance System</title>
+    <title>Community â€” Surveillance System</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
@@ -106,13 +106,14 @@
 <nav class="sidebar-nav">
 <div class="nav-label">Main</div>
 <a href="{{ url_for('dashboard') }}" class="nav-item"><i class="fas fa-table-columns"></i><span>Dashboard</span></a>
-<a href="{{ url_for('alerts_history') }}" class="nav-item"><i class="fas fa-bell"></i><span>Alerts History</span></a>
+<a href="{{ url_for('alerts_history') }}" class="nav-item"><i class="fas fa-bell"></i><span>Alerts History</span>{% if active_alerts_count > 0 %}<span class="nav-badge" style="background:#f59e0b;position:absolute;right:10px;top:50%;transform:translateY(-50%);color:white;font-size:0.65rem;font-weight:700;padding:2px 7px;border-radius:10px">{{ active_alerts_count }}</span>{% endif %}</a>
 <a href="{{ url_for('message_packets_view') }}" class="nav-item"><i class="fas fa-envelope-open-text"></i><span>Message Packets</span></a>
 {% if role|lower == 'admin' %}
 <div class="nav-label">Administration</div>
-<a href="{{ url_for('users') }}" class="nav-item"><i class="fas fa-users-gear"></i><span>Manage Users</span></a>
+<a href="{{ url_for('users') }}" class="nav-item"><i class="fas fa-users-gear"></i><span>Manage Users</span>{% if pending_count > 0 %}<span class="nav-badge" style="background:#dc2626;position:absolute;right:10px;top:50%;transform:translateY(-50%);color:white;font-size:0.65rem;font-weight:700;padding:2px 7px;border-radius:10px">{{ pending_count }}</span>{% endif %}</a>
 <a href="{{ url_for('events') }}" class="nav-item"><i class="fas fa-calendar-check"></i><span>Events</span></a>
 <a href="{{ url_for('community') }}" class="nav-item active"><i class="fas fa-house-chimney-user"></i><span>Community</span></a>
+<a href="{{ url_for('settings_page') }}" class="nav-item"><i class="fas fa-gear"></i><span>Settings</span></a>
 {% endif %}
 </nav>
 <div class="sidebar-footer"><div class="user-card"><div class="user-avatar">{{ username[0]|upper }}</div><div class="user-info"><div class="name">{{ username }}</div><div class="role-badge">{{ role }}</div></div></div><a href="{{ url_for('logout') }}" class="logout-btn"><i class="fas fa-right-from-bracket"></i><span>Log Out</span></a></div>
@@ -180,8 +181,8 @@
 {% for m in members %}
 <tr>
 <td><span class="member-avatar">{{ m.name[0]|upper }}</span><strong>{{ m.name }}</strong></td>
-<td style="color:var(--text-secondary);font-size:0.85rem;"><i class="fas fa-envelope" style="color:var(--text-muted);margin-right:6px;font-size:0.8rem;"></i>{{ m.email or '—' }}</td>
-<td style="font-size:0.85rem;">{{ m.phone or '—' }}</td>
+<td style="color:var(--text-secondary);font-size:0.85rem;"><i class="fas fa-envelope" style="color:var(--text-muted);margin-right:6px;font-size:0.8rem;"></i>{{ m.email or 'â€”' }}</td>
+<td style="font-size:0.85rem;">{{ m.phone or 'â€”' }}</td>
 <td>{% if m.lat and m.lng %}<span class="coord-chip"><i class="fas fa-location-dot" style="font-size:0.65rem;"></i> {{ "%.4f"|format(m.lat) }}, {{ "%.4f"|format(m.lng) }}</span>{% else %}<span style="color:var(--text-muted);font-size:0.82rem;">Not set</span>{% endif %}</td>
 <td><form action="{{ url_for('delete_community_member_route', member_id=m.id) }}" method="POST" style="margin:0;" onsubmit="return confirm('Remove this member?');"><button type="submit" class="delete-btn"><i class="fas fa-trash-can" style="font-size:0.7rem;"></i> Remove</button></form></td>
 </tr>

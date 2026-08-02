@@ -194,7 +194,7 @@
         /* Operator button */
         
         .portal-btn.operator {
-            color: #1e40af;
+            color: #000000;
         }
         
         .portal-btn.operator .icon-circle {
@@ -210,7 +210,7 @@
         .portal-btn.operator:hover .icon-circle {
             background: #2563eb;
             color: white;
-            box-shadow:none;
+            box-shadow: none;
         }
         
         .portal-btn.operator .desc {
@@ -255,6 +255,46 @@
             margin-right: 4px;
         }
         
+        @keyframes cam-sway-left {
+            0%,
+            100% {
+                transform: rotate(3deg);
+            }
+            50% {
+                transform: rotate(-5deg);
+            }
+        }
+        
+        @keyframes cam-sway-right {
+            0%,
+            100% {
+                transform: scaleX(-1) rotate(3deg);
+            }
+            50% {
+                transform: scaleX(-1) rotate(-5deg);
+            }
+        }
+        
+        .camera-left {
+            position: fixed;
+            left: 40px;
+            top: 30px;
+            width: 120px;
+            transform-origin: top left;
+            animation: cam-sway-left 5s ease-in-out infinite;
+            z-index: 0;
+        }
+        
+        .camera-right {
+            position: fixed;
+            right: 40px;
+            top: 30px;
+            width: 120px;
+            transform-origin: top right;
+            animation: cam-sway-right 6s ease-in-out infinite;
+            z-index: 0;
+        }
+        
         @media (max-width: 480px) {
             .portal-grid {
                 flex-direction: column;
@@ -262,11 +302,20 @@
             .portal-card {
                 padding: 28px;
             }
+            .camera-left,
+            .camera-right {
+                width: 70px;
+                left: 10px;
+                right: 10px;
+            }
         }
     </style>
 </head>
 
 <body>
+    <img src="{{ url_for('static', filename='camera.png') }}" class="camera-left" alt="CCTV Camera">
+    <img src="{{ url_for('static', filename='camera.png') }}" class="camera-right" alt="CCTV Camera">
+
     <div class="login-container">
         <div class="brand">
             <img src="{{ url_for('static', filename='logo.png') }}" alt="Logo" style="width:40px;height:40px;border-radius:10px;object-fit:contain;">
@@ -279,14 +328,12 @@
             <p class="subtitle">Choose your designated workspace to access the network</p>
 
             <div class="portal-grid">
-                <a href="{{ url_for('login', role_type='operator') }}" class="portal-btn operator">
-                    <div class="icon-circle"><i class="fas fa-desktop"></i></div>
-                    <span class="label">Operator Desk</span>
+                <a href="{{ url_for('login', role_type='resident') }}" class="portal-btn operator">
+                    <span class="label">Resident Desk</span>
                     <span class="desc">Monitor feeds &amp; manage alerts</span>
                 </a>
 
                 <a href="{{ url_for('login', role_type='admin') }}" class="portal-btn admin">
-                    <div class="icon-circle"><i class="fas fa-user-shield"></i></div>
                     <span class="label">System Admin</span>
                     <span class="desc">Full system control &amp; configuration</span>
                 </a>

@@ -1,10 +1,10 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="en">
 
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Message Packets — Surveillance System</title>
+    <title>Message Packets â€” Surveillance System</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
     <style>
@@ -106,14 +106,14 @@
         .brand-icon {
             width: 44px;
             height: 44px;
-            background: rgba(255,255,255,0.15);
+            background: rgba(255, 255, 255, 0.15);
             border-radius: 12px;
             display: flex;
             align-items: center;
             justify-content: center;
             font-size: 20px;
             color: white;
-            box-shadow:none;
+            box-shadow: none;
         }
         
         .sidebar-brand h1 {
@@ -174,7 +174,7 @@
         
         .nav-item.active {
             background: rgba(37, 99, 235, 0.15);
-            color: rgba(255,255,255,0.5);
+            color: rgba(255, 255, 255, 0.5);
             font-weight: 600;
         }
         
@@ -186,12 +186,13 @@
             transform: translateY(-50%);
             width: 3px;
             height: 60%;
-            background:#ffffff;border-radius:0 3px 3px 0;
+            background: #ffffff;
+            border-radius: 0 3px 3px 0;
         }
         
         .sidebar-footer {
             padding: 16px;
-            border-top:none;
+            border-top: none;
         }
         
         .user-card {
@@ -200,7 +201,7 @@
             gap: 12px;
             padding: 10px 12px;
             border-radius: 10px;
-            background:transparent;
+            background: transparent;
             transition: var(--transition);
         }
         
@@ -212,7 +213,7 @@
             width: 38px;
             height: 38px;
             border-radius: 10px;
-            background: rgba(255,255,255,0.15);
+            background: rgba(255, 255, 255, 0.15);
             display: flex;
             align-items: center;
             justify-content: center;
@@ -229,7 +230,7 @@
         
         .user-info .role-badge {
             font-size: 0.65rem;
-            color: rgba(255,255,255,0.5);
+            color: rgba(255, 255, 255, 0.5);
             font-weight: 600;
             text-transform: uppercase;
             letter-spacing: 0.5px;
@@ -242,7 +243,9 @@
             width: 100%;
             padding: 10px 16px;
             border-radius: 10px;
-            border:none;background:transparent;color:rgba(255,255,255,0.4);
+            border: none;
+            background: transparent;
+            color: rgba(255, 255, 255, 0.4);
             font-size: 0.85rem;
             font-weight: 600;
             cursor: pointer;
@@ -252,8 +255,8 @@
         }
         
         .logout-btn:hover {
-            background:rgba(255,255,255,0.1);
-            color:#fff;
+            background: rgba(255, 255, 255, 0.1);
+            color: #fff;
         }
         /* === MAIN === */
         
@@ -697,7 +700,20 @@
                 grid-template-columns: 1fr;
             }
         }
-    </style>
+            .nav-badge {
+            position: absolute;
+            right: 10px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: white;
+            font-size: 0.65rem;
+            font-weight: 700;
+            padding: 2px 7px;
+            border-radius: 10px;
+            min-width: 20px;
+            text-align: center
+        }
+        </style>
 </head>
 
 <body>
@@ -718,7 +734,7 @@
                     <i class="fas fa-table-columns"></i><span>Dashboard</span>
                 </a>
                 <a href="{{ url_for('alerts_history') }}" class="nav-item">
-                    <i class="fas fa-bell"></i><span>Alerts History</span>
+                    <i class="fas fa-bell"></i><span>Alerts History</span>{% if active_alerts_count > 0 %}<span class="nav-badge" style="background:#f59e0b;">{{ active_alerts_count }}</span>{% endif %}
                 </a>
                 <a href="{{ url_for('message_packets_view') }}" class="nav-item active">
                     <i class="fas fa-envelope-open-text"></i><span>Message Packets</span>
@@ -726,13 +742,13 @@
                 {% if role|lower == 'admin' %}
                 <div class="nav-label">Administration</div>
                 <a href="{{ url_for('users') }}" class="nav-item">
-                    <i class="fas fa-users-gear"></i><span>Manage Users</span>
+                    <i class="fas fa-users-gear"></i><span>Manage Users</span>{% if pending_count > 0 %}<span class="nav-badge" style="background:#dc2626;">{{ pending_count }}</span>{% endif %}
                 </a>
                 <a href="{{ url_for('events') }}" class="nav-item">
                     <i class="fas fa-calendar-check"></i><span>Events</span>
                 </a>
                 <a href="{{ url_for('community') }}" class="nav-item"><i class="fas fa-house-chimney-user"></i><span>Community</span></a>
-                {% endif %}
+                <a href="{{ url_for('settings_page') }}" class="nav-item"><i class="fas fa-gear"></i><span>Settings</span></a> {% endif %}
             </nav>
             <div class="sidebar-footer">
                 <div class="user-card">
@@ -774,7 +790,7 @@
                     <div class="stat-card animate-in">
                         <div class="stat-header">
                             <span>Total Packets</span>
-                            
+
                         </div>
                         <div class="stat-value">{{ packets|length }}</div>
                         <div class="stat-sub">With captured screenshots</div>
@@ -782,7 +798,7 @@
                     <div class="stat-card animate-in">
                         <div class="stat-header">
                             <span>Active Alerts</span>
-                            
+
                         </div>
                         <div class="stat-value">{{ active_packets }}</div>
                         <div class="stat-sub">Unresolved events</div>
@@ -790,7 +806,7 @@
                     <div class="stat-card animate-in">
                         <div class="stat-header">
                             <span>Dismissed</span>
-                            
+
                         </div>
                         <div class="stat-value">{{ dismissed_packets }}</div>
                         <div class="stat-sub">Marked as false alarms</div>
@@ -801,7 +817,7 @@
                 {% if not packets %}
                 <div class="empty-panel animate-in">
                     <i class="fas fa-camera-slash"></i>
-                    <p>No message packets yet — trigger a real alert with screenshot capture to see packets here.</p>
+                    <p>No message packets yet â€” trigger a real alert with screenshot capture to see packets here.</p>
                 </div>
                 {% else %}
                 <div class="packet-grid">
@@ -864,3 +880,4 @@
 </body>
 
 </html>
+

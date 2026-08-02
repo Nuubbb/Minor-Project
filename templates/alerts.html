@@ -1,15 +1,12 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="en">
 
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Alerts History — Surveillance System</title>
+    <title>Alerts History â€” Surveillance System</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
-    <a href="{{ url_for('community') }}" class="nav-item"><i class="fas fa-house-chimney-user"></i><span>Community</span></a>
-    <a href="{{ url_for('settings_page') }}" class="nav-item">
-        <i class="fas fa-gear"></i><span>Settings</span>
     </a>
     <style>
         *,
@@ -691,7 +688,20 @@
                 padding: 20px 16px;
             }
         }
-    </style>
+            .nav-badge {
+            position: absolute;
+            right: 10px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: white;
+            font-size: 0.65rem;
+            font-weight: 700;
+            padding: 2px 7px;
+            border-radius: 10px;
+            min-width: 20px;
+            text-align: center
+        }
+        </style>
 </head>
 
 <body>
@@ -712,7 +722,7 @@
                     <i class="fas fa-table-columns"></i><span>Dashboard</span>
                 </a>
                 <a href="{{ url_for('alerts_history') }}" class="nav-item active">
-                    <i class="fas fa-bell"></i><span>Alerts History</span>
+                    <i class="fas fa-bell"></i><span>Alerts History</span>{% if active_alerts_count > 0 %}<span class="nav-badge" style="background:#f59e0b;">{{ active_alerts_count }}</span>{% endif %}
                 </a>
                 <a href="{{ url_for('message_packets_view') }}" class="nav-item">
                     <i class="fas fa-envelope-open-text"></i><span>Message Packets</span>
@@ -720,10 +730,12 @@
                 {% if role|lower == 'admin' %}
                 <div class="nav-label">Administration</div>
                 <a href="{{ url_for('users') }}" class="nav-item">
-                    <i class="fas fa-users-gear"></i><span>Manage Users</span>
+                    <i class="fas fa-users-gear"></i><span>Manage Users</span>{% if pending_count > 0 %}<span class="nav-badge" style="background:#dc2626;">{{ pending_count }}</span>{% endif %}
                 </a>
                 <a href="{{ url_for('events') }}" class="nav-item">
                     <i class="fas fa-calendar-check"></i><span>Events</span>
+                <a href="{{ url_for('community') }}" class="nav-item"><i class="fas fa-house-chimney-user"></i><span>Community</span></a>
+                <a href="{{ url_for('settings_page') }}" class="nav-item"><i class="fas fa-gear"></i><span>Settings</span></a>
                 </a>
                 {% endif %}
             </nav>
@@ -760,6 +772,8 @@
                     <div class="stat-card animate-in">
                         <div class="stat-header">
                             <span>Total Events</span>
+                <a href="{{ url_for('community') }}" class="nav-item"><i class="fas fa-house-chimney-user"></i><span>Community</span></a>
+                <a href="{{ url_for('settings_page') }}" class="nav-item"><i class="fas fa-gear"></i><span>Settings</span></a>
                             
                         </div>
                         <div class="stat-value">{{ total }}</div>
@@ -911,3 +925,4 @@
 </body>
 
 </html>
+

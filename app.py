@@ -54,7 +54,7 @@ def index():
 @app.route('/login/<role_type>', methods=['GET', 'POST'])
 def login(role_type):
     role_type = role_type.capitalize()
-    if role_type not in ['Admin', 'Operator']:
+    if role_type not in ['Admin', 'Operator', 'Resident']:
         return redirect(url_for('index'))
 
     if request.method == 'POST':
@@ -76,7 +76,14 @@ def login(role_type):
                 if user_status == 'rejected':
                     flash("Your registration request was rejected.", "error")
                     return render_template('login.html', role_type=role_type)
-                if user['role'].lower() == role_type.lower():
+                user_role = user['role'].lower()
+                login_role = role_type.lower()
+                # Resident and Operator share the same access level
+                role_match = (
+                    user_role == login_role
+                    or (user_role in ('operator', 'resident') and login_role in ('operator', 'resident'))
+                )
+                if role_match:
                     session['username'] = user['username']
                     session['role'] = user['role']
                     session['login_time'] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -166,7 +173,7 @@ def verify_email():
             cursor.execute("UPDATE email_verification SET used=1 WHERE id=?", (record['id'],))
 
             cursor.execute(
-                "INSERT INTO users (username, password, email, role, status, lat, lng) VALUES (?, ?, ?, 'Operator', 'pending', ?, ?)",
+                "INSERT INTO users (username, password, email, role, status, lat, lng) VALUES (?, ?, ?, 'Resident', 'pending', ?, ?)",
                 (record['username'], record['password_hash'], record['email'],
                  record['lat'], record['lng'])
             )

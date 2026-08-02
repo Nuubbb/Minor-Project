@@ -1,10 +1,10 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="en">
 
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Events — Surveillance System</title>
+    <title>Events â€” Surveillance System</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
     <style>
@@ -770,7 +770,20 @@
                 flex-direction: column;
             }
         }
-    </style>
+            .nav-badge {
+            position: absolute;
+            right: 10px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: white;
+            font-size: 0.65rem;
+            font-weight: 700;
+            padding: 2px 7px;
+            border-radius: 10px;
+            min-width: 20px;
+            text-align: center
+        }
+        </style>
 </head>
 
 <body>
@@ -791,7 +804,7 @@
                     <i class="fas fa-table-columns"></i><span>Dashboard</span>
                 </a>
                 <a href="{{ url_for('alerts_history') }}" class="nav-item">
-                    <i class="fas fa-bell"></i><span>Alerts History</span>
+                    <i class="fas fa-bell"></i><span>Alerts History</span>{% if active_alerts_count > 0 %}<span class="nav-badge" style="background:#f59e0b;">{{ active_alerts_count }}</span>{% endif %}
                 </a>
                 <a href="{{ url_for('message_packets_view') }}" class="nav-item">
                     <i class="fas fa-envelope-open-text"></i><span>Message Packets</span>
@@ -799,7 +812,7 @@
                 {% if role|lower == 'admin' %}
                 <div class="nav-label">Administration</div>
                 <a href="{{ url_for('users') }}" class="nav-item">
-                    <i class="fas fa-users-gear"></i><span>Manage Users</span>
+                    <i class="fas fa-users-gear"></i><span>Manage Users</span>{% if pending_count > 0 %}<span class="nav-badge" style="background:#dc2626;">{{ pending_count }}</span>{% endif %}
                 </a>
                 <a href="{{ url_for('events') }}" class="nav-item active">
                     <i class="fas fa-calendar-check"></i><span>Events</span>
@@ -878,7 +891,7 @@
                     </div>
                     <div class="panel-body">
                         <div class="form-hint">
-                            <i class="fas fa-circle-info"></i> On event days, the system treats expected crowds and event hours as normal — fewer false alarms. Violence and weapon detection stay active at all times.
+                            <i class="fas fa-circle-info"></i> On event days, the system treats expected crowds and event hours as normal â€” fewer false alarms. Violence and weapon detection stay active at all times.
                         </div>
 
                         <form action="{{ url_for('add_event_route') }}" method="POST">
@@ -944,7 +957,7 @@
                                         <td><span class="event-name">{{ e['name'] }}</span></td>
                                         <td>
                                             <span class="time-chip">
-                                                <i class="fas fa-clock"></i> {{ e['start_hour'] }}:00 – {{ e['end_hour'] }}:00
+                                                <i class="fas fa-clock"></i> {{ e['start_hour'] }}:00 â€“ {{ e['end_hour'] }}:00
                                             </span>
                                         </td>
                                         <td>
@@ -1007,7 +1020,7 @@
                                         <td><span class="event-name" style="color:var(--text-secondary);">{{ de['name'] }}</span></td>
                                         <td>
                                             <span class="time-chip" style="background:#f1f5f9; color:var(--text-muted);">
-                                                <i class="fas fa-clock"></i> {{ de['start_hour'] }}:00 – {{ de['end_hour'] }}:00
+                                                <i class="fas fa-clock"></i> {{ de['start_hour'] }}:00 â€“ {{ de['end_hour'] }}:00
                                             </span>
                                         </td>
                                         <td>
@@ -1044,3 +1057,4 @@
 </body>
 
 </html>
+

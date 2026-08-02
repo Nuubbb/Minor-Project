@@ -141,7 +141,7 @@
         }
         
         .back-link:hover {
-            color: #2563eb;
+            color: #000000;
             gap: 8px;
         }
         
@@ -180,8 +180,13 @@
         }
         
         .role-chip.operator {
-            background: rgba(37, 99, 235, 0.08);
-            color: #2563eb;
+            background: rgba(0, 0, 0, 0.06);
+            color: #000000;
+        }
+        
+        .role-chip.resident {
+            background: rgba(0, 0, 0, 0.06);
+            color: #000000;
         }
         
         .role-chip.admin {
@@ -259,14 +264,14 @@
         }
         
         .input-wrapper input:focus {
-            border-color: #2563eb;
+            border-color: #000000;
             background: white;
-            box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.08);
+            box-shadow: 0 0 0 4px rgba(0, 0, 0, 0.06);
         }
         
         .input-wrapper input:focus+i,
         .input-wrapper:focus-within i {
-            color: #2563eb;
+            color: #000000;
         }
         /* Toggle password */
         
@@ -294,7 +299,7 @@
             padding: 14px;
             border: none;
             border-radius: 10px;
-            background: linear-gradient(135deg, #2563eb, #1d4ed8);
+            background: linear-gradient(135deg, #1a1a1a, #000000);
             color: white;
             font-family: inherit;
             font-size: 0.95rem;
@@ -302,12 +307,12 @@
             cursor: pointer;
             transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
             margin-top: 8px;
-            box-shadow: 0 4px 15px rgba(37, 99, 235, 0.25);
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.25);
         }
         
         .submit-btn:hover {
             transform: translateY(-2px);
-            box-shadow: 0 6px 20px rgba(37, 99, 235, 0.35);
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.35);
         }
         
         .submit-btn:active {
@@ -323,14 +328,14 @@
         }
         
         .login-footer a {
-            color: #2563eb;
+            color: #000000;
             text-decoration: none;
             font-weight: 600;
             transition: color 0.2s;
         }
         
         .login-footer a:hover {
-            color: #1d4ed8;
+            color: #333333;
             text-decoration: underline;
         }
         
@@ -394,7 +399,7 @@
 
             <p class="login-footer">
                 Don't have an account?
-                <a href="{{ url_for('signup') }}">Register as Operator</a>
+                <a href="{{ url_for('signup') }}">Register as {{ role_type }}</a>
             </p>
         </div>
     </div>

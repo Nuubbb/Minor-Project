@@ -6,6 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Settings – Surveillance System</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
     <style>
         *,
         *::before,
@@ -18,7 +19,7 @@
          :root {
             --bg-primary: #f4f6f9;
             --bg-card: #ffffff;
-            --sidebar-bg: #f8fafc;
+            --sidebar-bg: #000000;
             --accent: #2563eb;
             --accent-glow: rgba(37, 99, 235, 0.12);
             --danger: #dc2626;
@@ -92,19 +93,22 @@
         
         .sidebar-brand {
             padding: 24px 20px;
-            border-bottom: 1px solid var(--border)
+            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+            display: flex;
+            align-items: center;
+            gap: 12px
         }
         
         .sidebar-brand h1 {
             font-size: 1.1rem;
             font-weight: 800;
             letter-spacing: 1.5px;
-            color: var(--text-primary)
+            color: #fff
         }
         
         .sidebar-brand small {
             font-size: 0.65rem;
-            color: var(--text-muted);
+            color: rgba(255, 255, 255, 0.4);
             letter-spacing: 0.5px;
             display: block;
             margin-top: 2px
@@ -119,7 +123,7 @@
         .nav-label {
             font-size: 0.65rem;
             font-weight: 700;
-            color: var(--text-muted);
+            color: rgba(255, 255, 255, 0.3);
             text-transform: uppercase;
             letter-spacing: 1.5px;
             padding: 16px 12px 8px
@@ -131,7 +135,7 @@
             gap: 12px;
             padding: 11px 16px;
             border-radius: 10px;
-            color: var(--text-secondary);
+            color: #cbd5e1;
             text-decoration: none;
             font-weight: 500;
             font-size: 0.88rem;
@@ -140,14 +144,20 @@
             position: relative
         }
         
+        .nav-item i {
+            width: 20px;
+            text-align: center;
+            font-size: 1rem
+        }
+        
         .nav-item:hover {
-            background: rgba(37, 99, 235, 0.06);
-            color: var(--text-primary)
+            background: rgba(255, 255, 255, 0.08);
+            color: #f1f5f9
         }
         
         .nav-item.active {
-            background: rgba(37, 99, 235, 0.1);
-            color: var(--accent);
+            background: rgba(255, 255, 255, 0.15);
+            color: #ffffff;
             font-weight: 600
         }
         
@@ -159,12 +169,13 @@
             transform: translateY(-50%);
             width: 3px;
             height: 60%;
-            background:#ffffff;border-radius:0 3px 3px 0
+            background: #ffffff;
+            border-radius: 0 3px 3px 0
         }
         
         .sidebar-footer {
             padding: 16px;
-            border-top: 1px solid var(--border)
+            border-top: none
         }
         
         .user-card {
@@ -175,15 +186,28 @@
             border-radius: 10px
         }
         
+        .user-avatar {
+            width: 38px;
+            height: 38px;
+            border-radius: 10px;
+            background: rgba(255, 255, 255, 0.15);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 0.9rem;
+            color: #fff
+        }
+        
         .user-info .name {
             font-weight: 600;
             font-size: 0.85rem;
-            color: var(--text-primary)
+            color: #f1f5f9
         }
         
         .user-info .role-badge {
             font-size: 0.65rem;
-            color: var(--accent);
+            color: rgba(255, 255, 255, 0.5);
             font-weight: 600;
             text-transform: uppercase;
             letter-spacing: 0.5px
@@ -196,9 +220,9 @@
             width: 100%;
             padding: 10px 16px;
             border-radius: 10px;
-            border: 1px solid rgba(220, 38, 38, 0.2);
-            background: rgba(220, 38, 38, 0.04);
-            color: var(--danger);
+            border: none;
+            background: transparent;
+            color: rgba(255, 255, 255, 0.4);
             font-size: 0.85rem;
             font-weight: 600;
             cursor: pointer;
@@ -208,8 +232,8 @@
         }
         
         .logout-btn:hover {
-            background: rgba(220, 38, 38, 0.08);
-            border-color: rgba(220, 38, 38, 0.3)
+            background: rgba(255, 255, 255, 0.1);
+            color: #fff
         }
         
         .main-content {
@@ -344,29 +368,29 @@
         }
         
         .setting-group input:focus {
-            border-color: var(--accent);
+            border-color: #000000;
             background: white;
-            box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.08)
+            box-shadow: 0 0 0 4px rgba(0, 0, 0, 0.06)
         }
         
         .save-btn {
             padding: 14px 32px;
             border: none;
             border-radius: 10px;
-            background: rgba(255,255,255,0.15);
+            background: rgba(255, 255, 255, 0.15);
             color: white;
             font-family: inherit;
             font-size: 0.95rem;
             font-weight: 700;
             cursor: pointer;
             transition: all 0.3s;
-            box-shadow: 0 4px 15px rgba(37, 99, 235, 0.25);
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.25);
             margin-top: 24px
         }
         
         .save-btn:hover {
             transform: translateY(-2px);
-            box-shadow: 0 6px 20px rgba(37, 99, 235, 0.35)
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.35)
         }
         
         .save-btn:active {
@@ -420,33 +444,31 @@
     <div class="app-layout">
         <aside class="sidebar">
             <div class="sidebar-brand">
-                <h1>SURVEILLANCE</h1>
-                <small>Monitoring System</small>
+                <img src="{{ url_for('static', filename='logo.png') }}" alt="Logo" style="width:40px;height:40px;border-radius:10px;object-fit:contain;">
+                <div>
+                    <h1>SURVEILLANCE</h1><small>Monitoring System</small>
+                </div>
             </div>
             <nav class="sidebar-nav">
                 <div class="nav-label">Main</div>
-                <a href="{{ url_for('dashboard') }}" class="nav-item"><span>Dashboard</span></a>
-                <a href="{{ url_for('alerts_history') }}" class="nav-item" style="position:relative;">
-                    <span>Alerts History</span> {% if active_alerts_count > 0 %}
-                    <span class="nav-badge" style="background:#f59e0b;">{{ active_alerts_count }}</span> {% endif %}
-                </a>
-                <a href="{{ url_for('message_packets_view') }}" class="nav-item"><span>Message Packets</span></a> {% if role|lower == 'admin' %}
+                <a href="{{ url_for('dashboard') }}" class="nav-item"><i class="fas fa-table-columns"></i><span>Dashboard</span></a>
+                <a href="{{ url_for('alerts_history') }}" class="nav-item" style="position:relative;"><i class="fas fa-bell"></i><span>Alerts History</span>{% if active_alerts_count > 0 %}<span class="nav-badge" style="background:#f59e0b;">{{ active_alerts_count }}</span>{% endif %}</a>
+                <a href="{{ url_for('message_packets_view') }}" class="nav-item"><i class="fas fa-envelope-open-text"></i><span>Message Packets</span></a> {% if role|lower == 'admin' %}
                 <div class="nav-label">Administration</div>
-                <a href="{{ url_for('users') }}" class="nav-item" style="position:relative;">
-                    <span>Manage Users</span> {% if pending_count > 0 %}
-                    <span class="nav-badge" style="background:#dc2626;">{{ pending_count }}</span> {% endif %}
-                </a>
-                <a href="{{ url_for('events') }}" class="nav-item"><span>Events</span></a>
-                <a href="{{ url_for('settings_page') }}" class="nav-item active"><span>Settings</span></a> {% endif %}
+                <a href="{{ url_for('users') }}" class="nav-item" style="position:relative;"><i class="fas fa-users-gear"></i><span>Manage Users</span>{% if pending_count > 0 %}<span class="nav-badge" style="background:#dc2626;">{{ pending_count }}</span>{% endif %}</a>
+                <a href="{{ url_for('events') }}" class="nav-item"><i class="fas fa-calendar-check"></i><span>Events</span></a>
+                <a href="{{ url_for('community') }}" class="nav-item"><i class="fas fa-house-chimney-user"></i><span>Community</span></a>
+                <a href="{{ url_for('settings_page') }}" class="nav-item active"><i class="fas fa-gear"></i><span>Settings</span></a> {% endif %}
             </nav>
             <div class="sidebar-footer">
                 <div class="user-card">
+                    <div class="user-avatar">{{ username[0]|upper }}</div>
                     <div class="user-info">
                         <div class="name">{{ username }}</div>
                         <div class="role-badge">{{ role }}</div>
                     </div>
                 </div>
-                <a href="{{ url_for('logout') }}" class="logout-btn"><span>Log Out</span></a>
+                <a href="{{ url_for('logout') }}" class="logout-btn"><i class="fas fa-right-from-bracket"></i><span>Log Out</span></a>
             </div>
         </aside>
 
