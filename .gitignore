@@ -16,3 +16,10 @@ node_modules/
 .env
 .env.local
 .DS_Storedatabase.db
+
+database.db
+.DS_Store
+__pycache__/
+*.pyc
+check.py
+remove_bg.py
