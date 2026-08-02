@@ -1,4 +1,4 @@
-﻿import smtplib
+import smtplib
 from email.message import EmailMessage
 from datetime import datetime
 from pathlib import Path
@@ -7,7 +7,7 @@ SENDER = "surveillancesystem077@gmail.com"
 APP_PASS = "abfh myyc kugr njhk"
 SYSTEM_NAME = "Surveillance System"
 
-BASE_URL = "http://192.168.18.4:5001"
+BASE_URL = "http://192.168.18.6:5001"
 DISMISS_SECRET = "kec_surveillance_2026"
 
 

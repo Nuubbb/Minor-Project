@@ -323,6 +323,16 @@ def add_community_member(name, email, phone=None, lat=None, lng=None):
         return username, default_password
 
 
+def update_community_member(member_id, phone=None, lat=None, lng=None):
+    with sqlite3.connect(DATABASE) as conn:
+        cursor = conn.cursor()
+        cursor.execute(
+            "UPDATE users SET phone=?, lat=?, lng=? WHERE id=? AND role='Resident'",
+            (phone, lat, lng, member_id)
+        )
+        conn.commit()
+        return cursor.rowcount > 0
+
 def delete_community_member(member_id):
     with sqlite3.connect(DATABASE) as conn:
         conn.row_factory = sqlite3.Row

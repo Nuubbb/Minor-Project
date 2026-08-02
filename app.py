@@ -664,7 +664,20 @@ def add_community_member_route():
     flash(f"Community member '{name}' added.", "success")
     return redirect(url_for('community'))
 
-
+@app.route('/community/edit/<int:member_id>', methods=['POST'])
+def edit_community_member_route(member_id):
+    if 'username' not in session or session.get('role') != 'Admin':
+        return redirect(url_for('login_page'))
+    from database import update_community_member
+    phone = request.form.get('phone') or None
+    lat = request.form.get('lat') or None
+    lng = request.form.get('lng') or None
+    if lat: lat = float(lat)
+    if lng: lng = float(lng)
+    update_community_member(member_id, phone, lat, lng)
+    flash('Member updated.', 'success')
+    return redirect(url_for('community'))
+    
 @app.route('/community/delete/<int:member_id>', methods=['POST'])
 def delete_community_member_route(member_id):
     if 'username' not in session or session.get('role', '').lower() != 'admin':
