@@ -7,7 +7,7 @@
     <title>Surveillance System</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
-    <style>
+    <style>        html, body { overflow-x: hidden; }
         *,
         *::before,
         *::after {
@@ -24,7 +24,7 @@
             align-items: center;
             justify-content: center;
             position: relative;
-            overflow: hidden;
+            overflow-x: hidden;
         }
         /* Subtle animated background grid */
         
@@ -277,21 +277,21 @@
         
         .camera-left {
             position: fixed;
-            left: 40px;
-            top: 30px;
+            left: -120px;
+            top: 10px;
             width: 120px;
-            transform-origin: top left;
-            animation: cam-sway-left 5s ease-in-out infinite;
+            transform-origin: top right;
+            animation: cam-sway-right 6s ease-in-out infinite;
             z-index: 0;
         }
         
         .camera-right {
             position: fixed;
-            right: 40px;
-            top: 30px;
+            right: 10px;
+            top: 10px;
             width: 120px;
-            transform-origin: top right;
-            animation: cam-sway-right 6s ease-in-out infinite;
+            transform-origin: top left;
+            animation: cam-sway-left 5s ease-in-out infinite;
             z-index: 0;
         }
         
@@ -303,7 +303,7 @@
                 padding: 28px;
             }
             .camera-left,
-            .camera-right {
+            .camera-right {          
                 width: 70px;
                 left: 10px;
                 right: 10px;
@@ -314,7 +314,7 @@
 
 <body>
     <img src="{{ url_for('static', filename='camera.png') }}" class="camera-left" alt="CCTV Camera">
-    <img src="{{ url_for('static', filename='camera.png') }}" class="camera-right" alt="CCTV Camera">
+<img src="{{ url_for('static', filename='camera.png') }}" class="camera-right" alt="CCTV Camera">
 
     <div class="login-container">
         <div class="brand">
