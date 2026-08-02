@@ -54,7 +54,9 @@ def index():
 @app.route('/login/<role_type>', methods=['GET', 'POST'])
 def login(role_type):
     role_type = role_type.capitalize()
-    if role_type not in ['Admin', 'Operator', 'Resident']:
+    if role_type == 'Operator':
+        return redirect(url_for('login', role_type='resident'))
+    if role_type not in ['Admin', 'Resident']:
         return redirect(url_for('index'))
 
     if request.method == 'POST':

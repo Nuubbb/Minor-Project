@@ -397,10 +397,12 @@
                 </button>
             </form>
 
+            {% if role_type|lower != 'admin' %}
             <p class="login-footer">
                 Don't have an account?
                 <a href="{{ url_for('signup') }}">Register as {{ role_type }}</a>
             </p>
+            {% endif %}
         </div>
     </div>
 

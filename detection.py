@@ -216,9 +216,34 @@ def generate_frames(operator_email=None, source=None, operator_username="system"
                                          args=(operator_email, message, new_id),
                                          daemon=True).start()  # non-blocking
 
+            # ---- HUD overlay ----
+            h, w = img.shape[:2]
+            ts = datetime.now().strftime("%H:%M:%S")
+            cv2.putText(img, ts, (w - 100, h - 12), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 200, 255), 1)
             cv2.putText(img, f"Violence: {violence_prob:.2f}", (20, 90),
                         cv2.FONT_HERSHEY_SIMPLEX, 0.7,
                         (0, 0, 255) if is_violent else (0, 255, 0), 2)
+            crowd_limit = 3
+            count_color = (0, 0, 255) if person_count >= crowd_limit else (0, 255, 0)
+            count_label = f"Persons: {person_count}"
+            if person_count >= crowd_limit:
+                count_label += "  CROWD"
+            cv2.putText(img, count_label, (20, 120),
+                        cv2.FONT_HERSHEY_SIMPLEX, 0.6, count_color, 2)
+            now_ts = time.time()
+            after_hours = datetime.now().hour >= assessor.closing_hour
+            if after_hours and track_ids:
+                for pid in track_ids:
+                    start = assessor._track_start.get(pid)
+                    if start and (now_ts - start) > assessor.dwell_seconds * 0.5:
+                        dwell = int(now_ts - start)
+                        loiter_color = (0, 0, 255) if dwell >= assessor.dwell_seconds else (0, 165, 255)
+                        loiter_label = f"Loiter id:{pid} {dwell}s"
+                        if dwell >= assessor.dwell_seconds:
+                            loiter_label += " ALERT"
+                        cv2.putText(img, loiter_label, (20, 150),
+                                    cv2.FONT_HERSHEY_SIMPLEX, 0.5, loiter_color, 2)
+                        break
 
             ret, buffer = cv2.imencode('.jpg', img, [cv2.IMWRITE_JPEG_QUALITY, 50])
             yield (b'--frame\r\n' b'Content-Type: image/jpeg\r\n\r\n' + buffer.tobytes() + b'\r\n')
