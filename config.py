@@ -17,3 +17,4 @@ DEVICE_LOCATION = {
     "lat": 27.6710,
     "lng": 85.4298,
 }
+

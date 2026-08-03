@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Events â€” Surveillance System</title>
+    <title>Events: Surveillance System</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
     <style>
@@ -891,7 +891,7 @@
                     </div>
                     <div class="panel-body">
                         <div class="form-hint">
-                            <i class="fas fa-circle-info"></i> On event days, the system treats expected crowds and event hours as normal â€” fewer false alarms. Violence and weapon detection stay active at all times.
+                            <i class="fas fa-circle-info"></i> On event days, the system treats expected crowds and event hours as normal fewer false alarms. Violence and weapon detection stay active at all times.
                         </div>
 
                         <form action="{{ url_for('add_event_route') }}" method="POST">
@@ -919,7 +919,7 @@
                                     <input type="number" name="expected_crowd" min="0" value="20" class="form-input" required>
                                 </div>
                                 <div class="form-group" style="justify-content:flex-end;">
-                                    <button type="submit" class="submit-btn">
+                                    <button type="submit" style="padding:10px 24px; border-radius:8px; border:none; background:#2563eb; color:#ffffff; font-weight:600; font-size:0.9rem; cursor:pointer;" class="submit-btn">
                                         <i class="fas fa-plus"></i> Add Event
                                     </button>
                                 </div>
@@ -957,7 +957,7 @@
                                         <td><span class="event-name">{{ e['name'] }}</span></td>
                                         <td>
                                             <span class="time-chip">
-                                                <i class="fas fa-clock"></i> {{ e['start_hour'] }}:00 â€“ {{ e['end_hour'] }}:00
+                                                <i class="fas fa-clock"></i> {{ e['start_hour'] }}:00 {{ e['end_hour'] }}:00
                                             </span>
                                         </td>
                                         <td>
@@ -1020,7 +1020,7 @@
                                         <td><span class="event-name" style="color:var(--text-secondary);">{{ de['name'] }}</span></td>
                                         <td>
                                             <span class="time-chip" style="background:#f1f5f9; color:var(--text-muted);">
-                                                <i class="fas fa-clock"></i> {{ de['start_hour'] }}:00 â€“ {{ de['end_hour'] }}:00
+                                                <i class="fas fa-clock"></i> {{ de['start_hour'] }}:00 {{ de['end_hour'] }}:00
                                             </span>
                                         </td>
                                         <td>
